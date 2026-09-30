@@ -11,6 +11,8 @@ import {
   Eye,
   EyeOff,
   Wrench,
+  Clock,
+  MapPin,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -25,7 +27,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onClose,
   isMandatory = false,
 }) => {
-  const { login } = useWorkshop();
+  const { login, logoutReason } = useWorkshop();
 
   const [identifier, setIdentifier] = useState('');
   const [passOrPin, setPassOrPin] = useState('');
@@ -94,12 +96,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <img
               src="/logo.png"
               alt="Taller Automotriz Rodríguez Rodríguez"
-              className="w-44 h-44 sm:w-52 sm:h-52 md:w-56 md:h-56 object-contain rounded-2xl drop-shadow-2xl select-none"
+              className="w-40 h-40 sm:w-48 sm:h-48 md:w-52 md:h-52 aspect-square object-contain rounded-2xl drop-shadow-2xl select-none mx-auto"
+              style={{ objectFit: 'contain', aspectRatio: '1 / 1' }}
               loading="eager"
             />
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] sm:text-xs font-mono font-bold tracking-widest uppercase mb-1.5">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] sm:text-xs font-mono font-bold tracking-wider uppercase mb-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-red-400" />
             <span>ACCESO SEGURO AL SISTEMA</span>
           </div>
@@ -111,6 +114,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             Ingresa tus credenciales autorizadas para acceder al taller.
           </p>
         </div>
+
+        {/* Inactivity Alert Notification */}
+        {logoutReason === 'inactivity' && !errorMsg && !successMsg && (
+          <div className="mx-4 sm:mx-6 mt-4 p-3.5 rounded-xl bg-amber-950/70 border border-amber-600/70 text-amber-200 text-xs sm:text-sm flex items-start gap-2.5 animate-in fade-in duration-200">
+            <Clock className="w-5 h-5 shrink-0 text-amber-400 mt-0.5" />
+            <div>
+              <p className="font-bold text-amber-300">Sesión cerrada por inactividad</p>
+              <p className="text-amber-200/90 text-xs mt-0.5 leading-snug">
+                Por seguridad del taller, tu sesión se cerró tras 20 minutos sin actividad. Ingresa tus credenciales nuevamente para reanudar.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Feedback Alert Messages */}
         {errorMsg && (
@@ -197,15 +213,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               )}
             </button>
           </form>
+
+          {/* Security policy note */}
+          <div className="mt-4 pt-3.5 border-t border-neutral-800/60 flex items-center justify-center gap-1.5 text-[11px] text-neutral-400 text-center font-mono">
+            <ShieldCheck className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            <span>Cierre automático al recargar / cerrar pestaña y tras 20 min de inactividad</span>
+          </div>
         </div>
 
         {/* Security / System Footer Note */}
-        <div className="px-6 py-3.5 bg-neutral-950 border-t border-neutral-800/80 flex flex-col sm:flex-row items-center justify-between gap-1.5 text-[11px] text-neutral-400 font-mono">
+        <div className="px-6 py-3.5 bg-neutral-950 border-t border-neutral-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-neutral-400 font-mono">
           <span className="flex items-center gap-1.5 text-neutral-300">
             <Wrench className="w-3.5 h-3.5 text-red-500" />
             <span>App creada por <strong className="text-white font-bold">VlaSwink51</strong></span>
           </span>
-          <span className="text-neutral-400 font-semibold">El Salvador, Usulután</span>
+          <span className="text-neutral-300 font-semibold flex items-center gap-1 bg-neutral-900 border border-neutral-800 px-2 py-0.5 rounded-md">
+            <MapPin className="w-3 h-3 text-red-400 shrink-0" />
+            <span>El Salvador, Usulután</span>
+          </span>
         </div>
       </div>
     </div>

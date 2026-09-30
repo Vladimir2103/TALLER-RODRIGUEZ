@@ -44,10 +44,12 @@ interface WorkshopContextType {
   // Users / Mechanics & Auth
   users: User[];
   currentUser: User | null;
+  logoutReason: string | null;
+  clearLogoutReason: () => void;
   activeTechnicians: string[];
   login: (identifier: string, passOrPin: string) => { success: boolean; message?: string };
   loginAsDemo: (userId: string) => void;
-  logout: () => void;
+  logout: (reason?: string) => void;
   addUser: (user: Omit<User, 'id' | 'createdAt'>) => User;
   updateUser: (id: string, updates: Partial<User>) => void;
   deleteUser: (id: string) => void;
@@ -171,17 +173,76 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   });
 
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+  // Seguridd de sesión:
+  // Al recargar la página o cerrar la pestaña, NO se guarda la sesión en localStorage.
+  // El usuario siempre deberá iniciar sesión nuevamente.
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [logoutReason, setLogoutReason] = useState<string | null>(null);
+
+  // Limpieza inicial de cualquier sesión previa en localStorage/sessionStorage
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_currentUser`);
-      if (saved) {
-        return JSON.parse(saved);
-      }
-      return null;
+      localStorage.removeItem(`${STORAGE_KEY}_currentUser`);
+      sessionStorage.removeItem(`${STORAGE_KEY}_currentUser`);
     } catch {
-      return null;
+      // Ignore
     }
-  });
+  }, []);
+
+  // Al cerrar la pestaña o recargar, asegurar que se limpie cualquier rastro
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      try {
+        localStorage.removeItem(`${STORAGE_KEY}_currentUser`);
+        sessionStorage.removeItem(`${STORAGE_KEY}_currentUser`);
+      } catch {
+        // Ignore
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
+  // Temporizador de inactividad de 20 minutos (20 * 60 * 1000 ms = 1,200,000 ms)
+  const lastActivityRef = useRef<number>(Date.now());
+  useEffect(() => {
+    if (!currentUser) return;
+
+    lastActivityRef.current = Date.now();
+
+    const handleUserActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    const activityEvents: (keyof WindowEventMap)[] = [
+      'mousemove',
+      'mousedown',
+      'keydown',
+      'touchstart',
+      'scroll',
+      'click',
+    ];
+
+    activityEvents.forEach(evt => {
+      window.addEventListener(evt, handleUserActivity, { passive: true });
+    });
+
+    const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutos de inactividad
+    const timerInterval = setInterval(() => {
+      const elapsed = Date.now() - lastActivityRef.current;
+      if (elapsed >= INACTIVITY_TIMEOUT_MS) {
+        setCurrentUser(null);
+        setLogoutReason('inactivity');
+      }
+    }, 5000);
+
+    return () => {
+      activityEvents.forEach(evt => {
+        window.removeEventListener(evt, handleUserActivity);
+      });
+      clearInterval(timerInterval);
+    };
+  }, [currentUser]);
 
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
   const [lastSyncedAt, setLastSyncedAt] = useState<string>(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -192,7 +253,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const wsRef = useRef<WebSocket | null>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);
 
-  // Auto-persist to localStorage
+  // Auto-persist to localStorage (bases de datos seguras, pero sesión de usuario en memoria)
   useEffect(() => {
     try {
       localStorage.setItem(`${STORAGE_KEY}_clients`, JSON.stringify(clients));
@@ -203,16 +264,13 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       localStorage.setItem(`${STORAGE_KEY}_notifications`, JSON.stringify(notifications));
       localStorage.setItem(`${STORAGE_KEY}_mechanicNotifications`, JSON.stringify(mechanicNotifications));
       localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(users));
-      if (currentUser) {
-        localStorage.setItem(`${STORAGE_KEY}_currentUser`, JSON.stringify(currentUser));
-      } else {
-        localStorage.removeItem(`${STORAGE_KEY}_currentUser`);
-      }
+      // NUNCA persistir la sesión del usuario para garantizar login al recargar o cerrar pestaña
+      localStorage.removeItem(`${STORAGE_KEY}_currentUser`);
       setLastSyncedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch (e) {
       console.error('Failed to save to localStorage', e);
     }
-  }, [clients, parts, appointments, budgets, workOrders, notifications, mechanicNotifications, users, currentUser]);
+  }, [clients, parts, appointments, budgets, workOrders, notifications, mechanicNotifications, users]);
 
   // Periodic heartbeat sync indicator
   const triggerCloudSync = () => {
@@ -1113,6 +1171,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     setCurrentUser(found);
+    setLogoutReason(null);
     triggerCloudSync();
     return { success: true };
   };
@@ -1121,12 +1180,18 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const found = users.find(u => u.id === userId);
     if (found) {
       setCurrentUser(found);
+      setLogoutReason(null);
       triggerCloudSync();
     }
   };
 
-  const logout = () => {
+  const logout = (reason?: string) => {
     setCurrentUser(null);
+    setLogoutReason(reason || null);
+  };
+
+  const clearLogoutReason = () => {
+    setLogoutReason(null);
   };
 
   const addUser = (userData: Omit<User, 'id' | 'createdAt'>): User => {
@@ -1283,6 +1348,8 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       value={{
         users,
         currentUser,
+        logoutReason,
+        clearLogoutReason,
         activeTechnicians,
         login,
         loginAsDemo,

@@ -154,11 +154,12 @@ function WorkshopApp() {
               onClick={() => setActiveTab('dashboard')}
               className="flex items-center gap-2.5 sm:gap-3 group cursor-pointer text-left"
             >
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-black border border-neutral-800 p-0.5 flex items-center justify-center shrink-0 group-hover:border-red-500/60 transition-colors shadow-sm overflow-hidden">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 aspect-square rounded-xl bg-black border border-neutral-800 p-0.5 flex items-center justify-center shrink-0 group-hover:border-red-500/60 transition-colors shadow-sm overflow-hidden">
                 <img
                   src="/logo.png"
                   alt="Taller Automotriz Rodríguez Rodríguez"
-                  className="w-full h-full object-contain select-none"
+                  className="w-full h-full aspect-square object-contain select-none"
+                  style={{ objectFit: 'contain', aspectRatio: '1 / 1' }}
                   loading="eager"
                 />
               </div>
@@ -406,6 +407,18 @@ function WorkshopApp() {
                           <LogOut className="w-3.5 h-3.5" />
                           <span>Cerrar Sesión</span>
                         </button>
+                      </div>
+
+                      {/* Security & Creator Badge */}
+                      <div className="pt-2 border-t border-neutral-800 text-[10px] text-neutral-400 font-mono space-y-1">
+                        <div className="flex items-center gap-1.5 text-neutral-300">
+                          <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
+                          <span>Cierre tras 20 min inactividad o recargar</span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-400">
+                          <span>Por VlaSwink51</span>
+                          <span>El Salvador, Usulután</span>
+                        </div>
                       </div>
                     </div>
                   </>
