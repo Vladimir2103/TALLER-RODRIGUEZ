@@ -1,0 +1,6 @@
+{
+  "name": "Taller Rodriguez Rodriguez - Sistema Integral de Gestión Automotriz",
+  "description": "Software de gestión integral para Taller Rodríguez Rodríguez: citas, inventario de repuestos, presupuestos automáticos, órdenes de trabajo, historial de clientes, notificaciones de WhatsApp y reportes financieros.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
