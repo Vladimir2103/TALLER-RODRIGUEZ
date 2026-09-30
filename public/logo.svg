@@ -75,9 +75,9 @@
   </g>
   
   <!-- Text Content with authentic slant and bold uppercase condensed typeface -->
-  <g fill="#FFFFFF" text-anchor="middle" font-weight="900" font-style="italic">
-    <text x="400" y="440" font-size="78" font-family="'Plus Jakarta Sans', 'Arial Black', sans-serif" letter-spacing="4">TALLER</text>
-    <text x="400" y="505" font-size="54" font-family="'Plus Jakarta Sans', 'Arial Black', sans-serif" letter-spacing="5">AUTOMOTRIZ</text>
-    <text x="400" y="580" font-size="64" font-family="'Plus Jakarta Sans', 'Arial Black', sans-serif" letter-spacing="3">RODRIGUEZ RODRIGUEZ</text>
+  <g fill="#FFFFFF" text-anchor="middle" font-weight="900">
+    <text x="400" y="442" font-size="82" font-family="'Impact', 'Arial Black', 'Plus Jakarta Sans', sans-serif" letter-spacing="3">TALLER</text>
+    <text x="400" y="508" font-size="54" font-family="'Impact', 'Arial Black', 'Plus Jakarta Sans', sans-serif" letter-spacing="4">AUTOMOTRIZ</text>
+    <text x="400" y="580" font-size="62" font-style="italic" font-family="'Impact', 'Arial Black', 'Plus Jakarta Sans', sans-serif" letter-spacing="2">RODRIGUEZ RODRIGUEZ</text>
   </g>
 </svg>

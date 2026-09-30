@@ -458,7 +458,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                     required
                     value={clientPhone}
                     onChange={e => setClientPhone(e.target.value)}
-                    placeholder="+52 55 1234 5678"
+                    placeholder="+503 7000-0000"
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white font-mono focus:outline-none focus:border-red-500"
                   />
                 </div>
@@ -471,18 +471,18 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                     type="text"
                     value={vehicleModel}
                     onChange={e => setVehicleModel(e.target.value)}
-                    placeholder="Ej. Honda Civic Si Hatchback 2021"
+                    placeholder="Ej. Honda Civic 2022"
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:outline-none focus:border-red-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-300 mb-1">Placas *</label>
+                  <label className="block text-xs font-medium text-neutral-300 mb-1">Placas (El Salvador) *</label>
                   <input
                     type="text"
                     required
                     value={vehiclePlate}
                     onChange={e => setVehiclePlate(e.target.value.toUpperCase())}
-                    placeholder="NXY-4821"
+                    placeholder="P 123-456"
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white font-mono uppercase focus:outline-none focus:border-red-500"
                   />
                 </div>
@@ -722,7 +722,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                     <p className="text-[11px] text-neutral-400">{WORKSHOP_CONFIG.legalName}</p>
                     <p className="text-[11px] text-neutral-400">{WORKSHOP_CONFIG.address}</p>
                     <p className="text-[11px] text-neutral-400">
-                      Tel / WhatsApp: {WORKSHOP_CONFIG.phone} · RFC: {WORKSHOP_CONFIG.taxId}
+                      Tel / WhatsApp: {WORKSHOP_CONFIG.phone} · {WORKSHOP_CONFIG.taxId} · {WORKSHOP_CONFIG.taxNRC}
                     </p>
                   </div>
                 </div>

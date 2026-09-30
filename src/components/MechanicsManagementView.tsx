@@ -229,8 +229,8 @@ export const MechanicsManagementView: React.FC<MechanicsManagementViewProps> = (
     addUser({
       name: newName,
       username,
-      email: newEmail || `${username}@taller-rodriguez.mx`,
-      phone: newPhone || '+52 55 0000 0000',
+      email: newEmail || `${username}@taller-rodriguez.com`,
+      phone: newPhone || '+503 7000 0000',
       role: newRole,
       specialty: newSpecialty || 'Mecánico General Automotriz',
       pin: newPin || '1234',
@@ -817,7 +817,7 @@ export const MechanicsManagementView: React.FC<MechanicsManagementViewProps> = (
                     type="tel"
                     value={newPhone}
                     onChange={e => setNewPhone(e.target.value)}
-                    placeholder="+52 55 1234 5678"
+                    placeholder="+503 7000-0000"
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white font-mono focus:outline-none focus:border-red-500"
                   />
                 </div>
@@ -827,7 +827,7 @@ export const MechanicsManagementView: React.FC<MechanicsManagementViewProps> = (
                     type="email"
                     value={newEmail}
                     onChange={e => setNewEmail(e.target.value)}
-                    placeholder="mecanico@taller-rodriguez.mx"
+                    placeholder="mecanico@taller-rodriguez.com"
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:outline-none focus:border-red-500"
                   />
                 </div>

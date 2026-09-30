@@ -469,6 +469,8 @@ app.get('/api/health', (req, res) => {
 // Vite middleware in dev / Static files in prod
 async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';
+  const distDir = path.resolve(process.cwd(), 'dist');
+  const distIndex = path.join(distDir, 'index.html');
 
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');
@@ -478,10 +480,67 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.resolve('dist')));
-    app.get('*', (req, res) => {
-      res.sendFile(path.resolve('dist', 'index.html'));
-    });
+    // Check if dist/index.html was built; if not, try to build it automatically
+    if (!fs.existsSync(distIndex)) {
+      console.warn('[Server] ADVERTENCIA: No se encontró dist/index.html en producción.');
+      console.log('[Server] Ejecutando compilación automática (npm run build)...');
+      try {
+        const { execSync } = await import('child_process');
+        execSync('npm run build', { stdio: 'inherit' });
+        console.log('[Server] ¡Compilación finalizada exitosamente!');
+      } catch (buildError) {
+        console.error('[Server] No se pudo compilar dist automáticamente:', buildError);
+      }
+    }
+
+    if (fs.existsSync(distIndex)) {
+      app.use(express.static(distDir));
+      app.get('*', (req, res) => {
+        res.sendFile(distIndex);
+      });
+    } else {
+      // Diagnostic fallback instead of crashing with unhandled ENOENT
+      app.get('*', (req, res) => {
+        res.status(500).send(`
+          <!DOCTYPE html>
+          <html lang="es">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Configuración de Despliegue en Render</title>
+              <style>
+                body { font-family: system-ui, -apple-system, sans-serif; background: #0a0a0a; color: #ededed; padding: 32px 20px; max-width: 680px; margin: 0 auto; line-height: 1.6; }
+                .card { background: #171717; border: 1px solid #262626; border-radius: 12px; padding: 24px; margin-top: 20px; }
+                h1 { color: #f87171; font-size: 20px; margin-top: 0; }
+                code { background: #262626; color: #4ade80; padding: 4px 8px; border-radius: 6px; font-family: monospace; font-size: 14px; }
+                ol { padding-left: 20px; }
+                li { margin-bottom: 14px; }
+                .highlight { background: #000; border: 1px solid #333; padding: 12px; border-radius: 8px; display: block; margin: 8px 0; word-break: break-all; }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <h1>⚠️ Falta compilar los archivos de la aplicación (dist/index.html)</h1>
+                <p>El servidor inició correctamente en Render, pero los archivos estáticos de React no fueron generados durante el paso de compilación (Build Command).</p>
+                
+                <h3>Cómo solucionarlo en el panel de Render:</h3>
+                <ol>
+                  <li>Ingresa a tu dashboard en <strong>dashboard.render.com</strong> y abre tu servicio.</li>
+                  <li>Ve a la pestaña <strong>Settings</strong> (Configuración) a la izquierda.</li>
+                  <li>Busca el campo <strong>Build Command</strong> y cámbialo a:
+                    <div class="highlight"><code>npm install && npm run build</code></div>
+                  </li>
+                  <li>Asegúrate de que <strong>Start Command</strong> sea:
+                    <div class="highlight"><code>npm start</code></div>
+                  </li>
+                  <li>Haz clic en <strong>Save Changes</strong> y luego en <strong>Manual Deploy &gt; Deploy latest commit</strong>.</li>
+                </ol>
+              </div>
+            </body>
+          </html>
+        `);
+      });
+    }
   }
 
   const PORT = Number(process.env.PORT) || 3000;

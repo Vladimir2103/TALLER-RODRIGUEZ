@@ -34,7 +34,7 @@ export interface Client {
   phone: string;
   email: string;
   address?: string;
-  identification?: string; // DNI / RFC / RUT
+  identification?: string; // DUI / NIT (El Salvador)
   vehicles: Vehicle[];
   notes?: string;
   totalSpent: number;

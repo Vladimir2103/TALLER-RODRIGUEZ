@@ -177,9 +177,9 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (saved) {
         return JSON.parse(saved);
       }
-      return INITIAL_USERS[0]; // Default to Boss
+      return null;
     } catch {
-      return INITIAL_USERS[0];
+      return null;
     }
   });
 
@@ -818,10 +818,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       laborRatePerHour: WORKSHOP_CONFIG.defaultLaborRate,
       laborTotal,
       subtotal: budget.subtotal,
-      taxPercent: budget.taxPercent,
-      taxAmount: budget.taxAmount,
+      taxPercent: 0,
+      taxAmount: 0,
       discountAmount: budget.discountAmount,
-      total: budget.total,
+      total: Math.max(0, budget.subtotal - (budget.discountAmount || 0)),
       paymentStatus: 'pendiente',
       amountPaid: 0,
       technicianNotes: 'Orden iniciada automáticamente desde presupuesto aprobado.',
@@ -1006,8 +1006,8 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }): string => {
     // Sanitize phone number: strip non-digits
     let cleanPhone = phone.replace(/\D/g, '');
-    if (!cleanPhone.startsWith('52') && cleanPhone.length === 10) {
-      cleanPhone = `52${cleanPhone}`;
+    if (!cleanPhone.startsWith('503') && cleanPhone.length === 8) {
+      cleanPhone = `503${cleanPhone}`;
     }
 
     let messageText = '';

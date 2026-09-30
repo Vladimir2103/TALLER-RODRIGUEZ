@@ -416,7 +416,7 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
                 </div>
                 <div>
                   <span className="text-[10px] text-neutral-500 font-mono uppercase block">Domicilio</span>
-                  <span className="text-neutral-200 truncate block">{selectedClient.address || 'CDMX'}</span>
+                  <span className="text-neutral-200 truncate block">{selectedClient.address || 'El Salvador, Usulután'}</span>
                 </div>
               </div>
 
@@ -645,7 +645,7 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
                     required
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
-                    placeholder="+52 55 1234 5678"
+                    placeholder="+503 7000-0000"
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white font-mono focus:outline-none focus:border-red-500"
                   />
                 </div>
@@ -663,12 +663,12 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-300 mb-1">RFC / Identificación</label>
+                  <label className="block text-xs font-medium text-neutral-300 mb-1">DUI / NIT (El Salvador)</label>
                   <input
                     type="text"
                     value={identification}
                     onChange={e => setIdentification(e.target.value.toUpperCase())}
-                    placeholder="RFC o DNI"
+                    placeholder="Ej. 02345678-9 o NIT"
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white font-mono uppercase focus:outline-none focus:border-red-500"
                   />
                 </div>
@@ -680,7 +680,7 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
                   type="text"
                   value={address}
                   onChange={e => setAddress(e.target.value)}
-                  placeholder="Calle, Número, Colonia, Alcaldía"
+                  placeholder="El Salvador, Usulután"
                   className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:outline-none focus:border-red-500"
                 />
               </div>
@@ -694,12 +694,12 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="block text-[11px] text-neutral-400 mb-1">Placas</label>
+                    <label className="block text-[11px] text-neutral-400 mb-1">Placas (El Salvador)</label>
                     <input
                       type="text"
                       value={vPlate}
                       onChange={e => setVPlate(e.target.value.toUpperCase())}
-                      placeholder="NXY-4821"
+                      placeholder="P 123-456"
                       className="w-full px-2.5 py-1.5 bg-neutral-900 border border-neutral-800 rounded text-white font-mono uppercase"
                     />
                   </div>
@@ -806,13 +806,13 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
 
             <form onSubmit={handleAddVehicleToClient} className="p-5 space-y-3 text-xs">
               <div>
-                <label className="block text-xs font-medium text-neutral-300 mb-1">Placas *</label>
+                <label className="block text-xs font-medium text-neutral-300 mb-1">Placas (El Salvador) *</label>
                 <input
                   type="text"
                   required
                   value={evPlate}
                   onChange={e => setEvPlate(e.target.value.toUpperCase())}
-                  placeholder="LMR-9043"
+                  placeholder="P 782-310"
                   className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white font-mono uppercase focus:outline-none focus:border-red-500"
                 />
               </div>
@@ -943,11 +943,12 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-300 mb-1">RFC / Identificación</label>
+                  <label className="block text-xs font-medium text-neutral-300 mb-1">DUI / NIT (El Salvador)</label>
                   <input
                     type="text"
                     value={editClientIdentification}
                     onChange={e => setEditClientIdentification(e.target.value.toUpperCase())}
+                    placeholder="Ej. 02345678-9 o NIT"
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white font-mono uppercase focus:outline-none focus:border-red-500"
                   />
                 </div>
@@ -1012,12 +1013,13 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
 
             <form onSubmit={handleUpdateVehicle} className="p-5 space-y-3 text-xs">
               <div>
-                <label className="block text-xs font-medium text-neutral-300 mb-1">Placas *</label>
+                <label className="block text-xs font-medium text-neutral-300 mb-1">Placas (El Salvador) *</label>
                 <input
                   type="text"
                   required
                   value={editVPlate}
                   onChange={e => setEditVPlate(e.target.value.toUpperCase())}
+                  placeholder="P 123-456"
                   className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white font-mono uppercase focus:outline-none focus:border-red-500"
                 />
               </div>

@@ -82,7 +82,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, forceSho
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="w-full flex items-center justify-center"
         >
-          <Logo className="w-full max-w-[340px] sm:max-w-[400px]" theme="dark" showText={true} />
+          <Logo className="w-60 h-60 sm:w-72 sm:h-72 mx-auto" theme="dark" showText={true} />
         </motion.div>
 
         {/* Tagline under logo */}

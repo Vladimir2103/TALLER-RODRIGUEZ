@@ -3,6 +3,7 @@ import { useWorkshop } from '../context/WorkshopContext';
 import { NotificationLog } from '../types';
 import { MessageSquare, Send, Copy, Check, ExternalLink, X, Smartphone, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '../utils/format';
+import { WORKSHOP_CONFIG } from '../data/initialData';
 import confetti from 'canvas-confetti';
 
 interface WhatsAppModalProps {
@@ -49,7 +50,7 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
 
     switch (templateType) {
       case 'cita':
-        return `🚗 *${workshop}* 🚗\n\nEstimado/a *${cName}*,\nTu cita en nuestro taller ha sido confirmada para el día 📅 *${templateData.date || 'próximamente'}* a las ⏰ *${templateData.time || '08:30'} hrs*.\n\nVehículo: *${veh}* (${plate})\nServicio: ${templateData.service || 'Mantenimiento General'}\n\n📍 Ubicación: Calzada de Tlalpan 2840, Col. Espartaco, Coyoacán\n\n¡Te esperamos puntual! Si requieres reprogramar, respóndenos por este medio.`;
+        return `🚗 *${workshop}* 🚗\n\nEstimado/a *${cName}*,\nTu cita en nuestro taller ha sido confirmada para el día 📅 *${templateData.date || 'próximamente'}* a las ⏰ *${templateData.time || '08:30'} hrs*.\n\nVehículo: *${veh}* (${plate})\nServicio: ${templateData.service || 'Mantenimiento General'}\n\n📍 Ubicación: ${WORKSHOP_CONFIG.address}\n\n¡Te esperamos puntual! Si requieres reprogramar, respóndenos por este medio.`;
 
       case 'presupuesto':
         return `📋 *${workshop}* - Presupuesto Listo\n\nHola *${cName}*,\nHemos terminado el diagnóstico e inspección de tu vehículo *${veh}* (${plate}).\n\n📄 Presupuesto N°: *${templateData.quoteNumber || 'COT-2026-0042'}*\n💰 Total Estimado: *${formatCurrency(Number(templateData.total || 0))}*\n\nPuedes autorizarlo respondiendo "AUTORIZO" a este mensaje o consultarnos cualquier duda técnica.`;
@@ -137,13 +138,13 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-neutral-300 mb-1">Número de WhatsApp (10 dígitos)</label>
+              <label className="block text-xs font-medium text-neutral-300 mb-1">Número de WhatsApp (8 dígitos · El Salvador)</label>
               <div className="relative">
                 <input
                   type="tel"
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
-                  placeholder="+52 55 1234 5678"
+                  placeholder="+503 7000-0000"
                   className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500 font-mono"
                 />
               </div>

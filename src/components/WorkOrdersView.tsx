@@ -197,7 +197,7 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
       partsUsed,
       laborHours,
       laborRatePerHour,
-      taxPercent: WORKSHOP_CONFIG.defaultTaxPercent,
+      taxPercent: 0,
       discountAmount: 0,
       paymentStatus,
       amountPaid: Number(amountPaid),
@@ -653,7 +653,7 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                     required
                     value={clientPhone}
                     onChange={e => setClientPhone(e.target.value)}
-                    placeholder="+52 55 1234 5678"
+                    placeholder="+503 7000-0000"
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white font-mono focus:outline-none focus:border-red-500"
                   />
                 </div>
@@ -668,7 +668,7 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                     required
                     value={vehicleBrand}
                     onChange={e => setVehicleBrand(e.target.value)}
-                    placeholder="Honda, Toyota, VW..."
+                    placeholder="Honda, Toyota, Nissan..."
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:outline-none focus:border-red-500"
                   />
                 </div>
@@ -678,18 +678,18 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                     type="text"
                     value={vehicleModel}
                     onChange={e => setVehicleModel(e.target.value)}
-                    placeholder="Civic Si 2021"
+                    placeholder="Civic 2022"
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:outline-none focus:border-red-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-300 mb-1">Placas *</label>
+                  <label className="block text-xs font-medium text-neutral-300 mb-1">Placas (El Salvador) *</label>
                   <input
                     type="text"
                     required
                     value={vehiclePlate}
                     onChange={e => setVehiclePlate(e.target.value.toUpperCase())}
-                    placeholder="NXY-4821"
+                    placeholder="P 123-456"
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white font-mono uppercase focus:outline-none focus:border-red-500"
                   />
                 </div>
@@ -978,7 +978,7 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                     <p className="text-[11px] text-neutral-400">{WORKSHOP_CONFIG.legalName}</p>
                     <p className="text-[11px] text-neutral-400">{WORKSHOP_CONFIG.address}</p>
                     <p className="text-[11px] text-neutral-400">
-                      Tel: {WORKSHOP_CONFIG.phone} · RFC: {WORKSHOP_CONFIG.taxId}
+                      Tel: {WORKSHOP_CONFIG.phone} · {WORKSHOP_CONFIG.taxId} · {WORKSHOP_CONFIG.taxNRC}
                     </p>
                   </div>
                 </div>
@@ -1093,7 +1093,7 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                 </table>
               </div>
 
-              {/* Total calculations */}
+              {/* Total calculations - Tax removed completely for El Salvador work orders */}
               <div className="flex justify-end pt-4 border-t border-neutral-800">
                 <div className="w-64 space-y-1.5 text-xs">
                   <div className="flex justify-between text-neutral-400">
@@ -1102,16 +1102,18 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                       {formatUSD(selectedOrderForPrint.subtotal)}
                     </span>
                   </div>
-                  <div className="flex justify-between text-neutral-400">
-                    <span>IVA ({selectedOrderForPrint.taxPercent}%):</span>
-                    <span className="font-mono text-white">
-                      {formatUSD(selectedOrderForPrint.taxAmount)}
-                    </span>
-                  </div>
+                  {selectedOrderForPrint.discountAmount > 0 && (
+                    <div className="flex justify-between text-emerald-400">
+                      <span>Descuento:</span>
+                      <span className="font-mono">
+                        -{formatUSD(selectedOrderForPrint.discountAmount)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between pt-1 border-t border-neutral-800 text-sm font-bold text-white">
                     <span>TOTAL:</span>
                     <span className="font-mono text-base text-emerald-400">
-                      {formatCurrency(selectedOrderForPrint.total)}
+                      {formatCurrency(Math.max(0, selectedOrderForPrint.subtotal - (selectedOrderForPrint.discountAmount || 0)))}
                     </span>
                   </div>
                   <div className="flex justify-between text-[11px] text-neutral-400">
@@ -1123,7 +1125,7 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                   <div className="flex justify-between font-bold text-amber-300">
                     <span>SALDO PENDIENTE:</span>
                     <span className="font-mono">
-                      {formatCurrency(selectedOrderForPrint.total - selectedOrderForPrint.amountPaid)}
+                      {formatCurrency(Math.max(0, selectedOrderForPrint.subtotal - (selectedOrderForPrint.discountAmount || 0) - selectedOrderForPrint.amountPaid))}
                     </span>
                   </div>
                 </div>

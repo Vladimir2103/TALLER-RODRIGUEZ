@@ -128,6 +128,18 @@ function WorkshopApp() {
     setIsCreateOTOpen(true);
   };
 
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
+        {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+        <LoginModal
+          isOpen={true}
+          isMandatory={true}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col antialiased selection:bg-red-600/30 selection:text-white pb-20 md:pb-6">
       {/* Replay Splash screen trigger */}
@@ -136,18 +148,28 @@ function WorkshopApp() {
       {/* Top Bar following Top Bar Contract: 3 Zones */}
       <header className="no-print sticky top-0 z-30 bg-neutral-950/90 backdrop-blur-md border-b border-neutral-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          {/* Zone 1: Single element wordmark + authentic car profile icon */}
+          {/* Zone 1: Official Workshop Logo & Brand */}
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className="flex items-center gap-2.5 group cursor-pointer text-left"
+              className="flex items-center gap-2.5 sm:gap-3 group cursor-pointer text-left"
             >
-              <div className="w-9 h-9 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center p-1 group-hover:border-red-500/60 transition-colors">
-                <Logo variant="icon" theme="dark" showText={false} className="w-full h-full" />
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-black border border-neutral-800 p-0.5 flex items-center justify-center shrink-0 group-hover:border-red-500/60 transition-colors shadow-sm overflow-hidden">
+                <img
+                  src="/logo.png"
+                  alt="Taller Automotriz Rodríguez Rodríguez"
+                  className="w-full h-full object-contain select-none"
+                  loading="eager"
+                />
               </div>
-              <span className="text-sm sm:text-base font-extrabold tracking-tight text-white uppercase font-sans">
-                TALLER RODRÍGUEZ RODRÍGUEZ
-              </span>
+              <div className="flex flex-col">
+                <span className="text-xs sm:text-sm font-black tracking-tight text-white uppercase font-sans leading-tight">
+                  Taller Automotriz
+                </span>
+                <span className="text-[10px] sm:text-xs font-extrabold text-red-500 tracking-wider uppercase font-mono leading-tight">
+                  Rodríguez Rodríguez
+                </span>
+              </div>
             </button>
           </div>
 
@@ -333,8 +355,8 @@ function WorkshopApp() {
                         </div>
                         <p className="text-[11px] text-neutral-400 mt-0.5 truncate">{currentUser.specialty}</p>
                         <div className="mt-1.5 p-1.5 bg-neutral-950 rounded-lg border border-neutral-850 flex items-center justify-between text-[11px] font-mono">
-                          <span className="text-neutral-400">Usuario login: <strong className="text-white">@{currentUser.username}</strong></span>
-                          <span className="text-amber-400">PIN: {currentUser.pin}</span>
+                          <span className="text-neutral-400">Usuario: <strong className="text-white">@{currentUser.username}</strong></span>
+                          <span className="text-neutral-400">{currentUser.role === 'boss' ? 'Administrador' : 'Técnico'}</span>
                         </div>
                       </div>
 
@@ -347,7 +369,7 @@ function WorkshopApp() {
                           className="w-full px-2.5 py-2 rounded-lg text-neutral-300 hover:text-white hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors text-left"
                         >
                           <UserCog className="w-3.5 h-3.5 text-blue-400" />
-                          <span>Modificar mi Usuario & PIN (Login)</span>
+                          <span>Modificar mi Usuario & PIN</span>
                         </button>
 
                         <button
@@ -358,7 +380,7 @@ function WorkshopApp() {
                           className="w-full px-2.5 py-2 rounded-lg text-neutral-300 hover:text-white hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors text-left"
                         >
                           <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Cambiar de Usuario (Prueba de Roles)</span>
+                          <span>Cambiar de Cuenta</span>
                         </button>
 
                         {canManageStaff && (
@@ -526,6 +548,20 @@ function WorkshopApp() {
           />
         )}
       </main>
+
+      {/* System Footer with Author Credit and Workshop Location */}
+      <footer className="no-print mt-auto border-t border-neutral-800/80 bg-neutral-950/80 py-3.5 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-neutral-400 font-mono">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+            <span>Taller Rodríguez Rodríguez · <strong className="text-neutral-300">El Salvador, Usulután</strong></span>
+          </div>
+          <div className="text-neutral-400 flex items-center gap-1.5">
+            <Wrench className="w-3.5 h-3.5 text-red-500" />
+            <span>App creada por <strong className="text-white font-bold">VlaSwink51</strong></span>
+          </div>
+        </div>
+      </footer>
 
       {/* Fixed Bottom Tab Bar for Mobile Thumb Ergonomics (Pattern 1 from Mobile Guide) */}
       <div className="no-print lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-neutral-950/95 backdrop-blur-md border-t border-neutral-800 grid grid-cols-5 items-center h-16 px-1">
