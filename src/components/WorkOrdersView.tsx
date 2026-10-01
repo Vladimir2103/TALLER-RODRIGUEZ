@@ -23,11 +23,13 @@ import {
   DollarSign,
   PlusCircle,
   ShieldCheck,
+  Share2,
 } from 'lucide-react';
 import { WORKSHOP_CONFIG } from '../data/initialData';
 import { Logo } from './Logo';
 import { formatCurrency, formatUSD } from '../utils/format';
 import { AssignMechanicModal } from './AssignMechanicModal';
+import { ShareTrackingModal } from './ShareTrackingModal';
 import confetti from 'canvas-confetti';
 
 interface WorkOrdersViewProps {

@@ -404,6 +404,29 @@ wss.on('connection', ws => {
 });
 
 // REST Endpoints
+app.get('/api/tracking/:type/:id', (req, res) => {
+  const { type, id } = req.params;
+  const cleanId = (id || '').trim();
+
+  if (type === 'ot') {
+    const order = state.workOrders.find(
+      o => o.id === cleanId || o.otNumber.toLowerCase() === cleanId.toLowerCase()
+    );
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Orden de trabajo no encontrada' });
+    }
+    return res.json({ success: true, type: 'ot', data: order, timestamp: state.lastUpdated });
+  } else if (type === 'cita') {
+    const appointment = state.appointments.find(a => a.id === cleanId);
+    if (!appointment) {
+      return res.status(404).json({ success: false, error: 'Cita no encontrada' });
+    }
+    return res.json({ success: true, type: 'cita', data: appointment, timestamp: state.lastUpdated });
+  }
+
+  return res.status(400).json({ success: false, error: 'Tipo de seguimiento no válido. Usa "ot" o "cita".' });
+});
+
 app.get('/api/state', (req, res) => {
   res.json({
     success: true,

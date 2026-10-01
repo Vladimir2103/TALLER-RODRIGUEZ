@@ -48,24 +48,35 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
     const veh = templateData.vehicle || 'Vehículo';
     const plate = templateData.plate || '';
 
+    const baseUrl = window.location.origin + window.location.pathname;
+    const trackingUrl =
+      templateData.trackingUrl ||
+      (templateData.otId ? `${baseUrl}?track=ot&id=${templateData.otId}` : '') ||
+      (templateData.otNumber ? `${baseUrl}?track=ot&id=${templateData.otNumber}` : '') ||
+      (templateData.appointmentId ? `${baseUrl}?track=cita&id=${templateData.appointmentId}` : '');
+
+    const trackingNotice = trackingUrl
+      ? `\n\n🔍 *Sigue el avance de tu vehículo en tiempo real (Solo Lectura):*\n${trackingUrl}`
+      : '';
+
     switch (templateType) {
       case 'cita':
-        return `🚗 *${workshop}* 🚗\n\nEstimado/a *${cName}*,\nTu cita en nuestro taller ha sido confirmada para el día 📅 *${templateData.date || 'próximamente'}* a las ⏰ *${templateData.time || '08:30'} hrs*.\n\nVehículo: *${veh}* (${plate})\nServicio: ${templateData.service || 'Mantenimiento General'}\n\n📍 Ubicación: ${WORKSHOP_CONFIG.address}\n\n¡Te esperamos puntual! Si requieres reprogramar, respóndenos por este medio.`;
+        return `🚗 *${workshop}* 🚗\n\nEstimado/a *${cName}*,\nTu cita en nuestro taller ha sido confirmada para el día 📅 *${templateData.date || 'próximamente'}* a las ⏰ *${templateData.time || '08:30'} hrs*.\n\nVehículo: *${veh}* (${plate})\nServicio: ${templateData.service || 'Mantenimiento General'}${trackingNotice}\n\n📍 Ubicación: ${WORKSHOP_CONFIG.address}\n\n¡Te esperamos puntual! Si requieres reprogramar, respóndenos por este medio.`;
 
       case 'presupuesto':
         return `📋 *${workshop}* - Presupuesto Listo\n\nHola *${cName}*,\nHemos terminado el diagnóstico e inspección de tu vehículo *${veh}* (${plate}).\n\n📄 Presupuesto N°: *${templateData.quoteNumber || 'COT-2026-0042'}*\n💰 Total Estimado: *${formatCurrency(Number(templateData.total || 0))}*\n\nPuedes autorizarlo respondiendo "AUTORIZO" a este mensaje o consultarnos cualquier duda técnica.`;
 
       case 'ot_inicio':
-        return `🔧 *${workshop}* - Orden de Trabajo Iniciada\n\nHola *${cName}*,\nTu vehículo *${veh}* (${plate}) ha ingresado al área de servicio con la orden *${templateData.otNumber || 'OT-2026-0145'}*.\n\nTécnico a cargo: *${templateData.technician || 'Carlos Rodríguez'}*\nFecha estimada de entrega: *${templateData.estimatedDate || 'Mañana 17:00 hrs'}*\n\nTe mantendremos informado del avance de las reparaciones.`;
+        return `🔧 *${workshop}* - Orden de Trabajo Iniciada\n\nHola *${cName}*,\nTu vehículo *${veh}* (${plate}) ha ingresado al área de servicio con la orden *${templateData.otNumber || 'OT-2026-0145'}*.\n\nTécnico a cargo: *${templateData.technician || 'Carlos Rodríguez'}*\nFecha estimada de entrega: *${templateData.estimatedDate || 'Mañana 17:00 hrs'}*${trackingNotice}\n\nTe mantendremos informado del avance de las reparaciones.`;
 
       case 'ot_listo':
-        return `✅ *${workshop}* - ¡Tu auto está LISTO!\n\nEstimado/a *${cName}*,\nNos complace informarte que las reparaciones de tu *${veh}* (${plate}) han concluido exitosamente tras superar las pruebas de control de calidad.\n\n📋 Orden: *${templateData.otNumber || 'OT-2026-0142'}*\n💵 Saldo a Liquidar: *${formatCurrency(Number(templateData.balanceDue !== undefined ? templateData.balanceDue : templateData.total || 0))}*\n\nPuedes retirarlo hoy en horario de 08:30 a 19:00 hrs. ¡Gracias por confiar en Taller Rodríguez Rodríguez!`;
+        return `✅ *${workshop}* - ¡Tu auto está LISTO!\n\nEstimado/a *${cName}*,\nNos complace informarte que las reparaciones de tu *${veh}* (${plate}) han concluido exitosamente tras superar las pruebas de control de calidad.\n\n📋 Orden: *${templateData.otNumber || 'OT-2026-0142'}*\n💵 Saldo a Liquidar: *${formatCurrency(Number(templateData.balanceDue !== undefined ? templateData.balanceDue : templateData.total || 0))}*${trackingNotice}\n\nPuedes retirarlo hoy en horario de 08:30 a 19:00 hrs. ¡Gracias por confiar en Taller Rodríguez Rodríguez!`;
 
       case 'mantenimiento':
         return `⚠️ *${workshop}* - Recordatorio de Mantenimiento\n\nHola *${cName}*,\nDe acuerdo a nuestros registros, tu *${veh}* (${plate}) está próximo a cumplir el kilometraje para su cambio de aceite y revisión de seguridad.\n\n¿Deseas que te agendemos una cita prioritaria esta semana?`;
 
       case 'personalizado':
-        return customText || `Hola ${cName}, nos comunicamos de Taller Rodríguez Rodríguez respecto a tu vehículo ${veh}.`;
+        return customText || `Hola ${cName}, nos comunicamos de Taller Rodríguez Rodríguez respecto a tu vehículo ${veh}.${trackingNotice}`;
       default:
         return '';
     }
