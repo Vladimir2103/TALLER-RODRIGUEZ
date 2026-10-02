@@ -406,25 +406,64 @@ wss.on('connection', ws => {
 // REST Endpoints
 app.get('/api/tracking/:type/:id', (req, res) => {
   const { type, id } = req.params;
-  const cleanId = (id || '').trim();
+  const cleanId = (id || '').trim().toLowerCase();
+  const rawId = (id || '').trim();
 
-  if (type === 'ot') {
+  const normalizePlate = (p?: string) => (p || '').toLowerCase().replace(/[\s\-_]/g, '');
+
+  if (type === 'ot' || type === 'orden' || type === 'trabajo') {
     const order = state.workOrders.find(
-      o => o.id === cleanId || o.otNumber.toLowerCase() === cleanId.toLowerCase()
+      o =>
+        o.id.toLowerCase() === cleanId ||
+        o.otNumber.toLowerCase() === cleanId ||
+        normalizePlate(o.vehiclePlate) === normalizePlate(cleanId)
     );
     if (!order) {
       return res.status(404).json({ success: false, error: 'Orden de trabajo no encontrada' });
     }
     return res.json({ success: true, type: 'ot', data: order, timestamp: state.lastUpdated });
   } else if (type === 'cita') {
-    const appointment = state.appointments.find(a => a.id === cleanId);
+    const appointment = state.appointments.find(
+      a =>
+        a.id.toLowerCase() === cleanId ||
+        normalizePlate(a.vehiclePlate) === normalizePlate(cleanId)
+    );
     if (!appointment) {
       return res.status(404).json({ success: false, error: 'Cita no encontrada' });
     }
     return res.json({ success: true, type: 'cita', data: appointment, timestamp: state.lastUpdated });
   }
 
-  return res.status(400).json({ success: false, error: 'Tipo de seguimiento no válido. Usa "ot" o "cita".' });
+  // Fallback search across both
+  const matchedOT = state.workOrders.find(
+    o =>
+      o.id.toLowerCase() === cleanId ||
+      o.otNumber.toLowerCase() === cleanId ||
+      normalizePlate(o.vehiclePlate) === normalizePlate(cleanId)
+  );
+  if (matchedOT) {
+    return res.json({ success: true, type: 'ot', data: matchedOT, timestamp: state.lastUpdated });
+  }
+
+  const matchedApp = state.appointments.find(
+    a =>
+      a.id.toLowerCase() === cleanId ||
+      normalizePlate(a.vehiclePlate) === normalizePlate(cleanId)
+  );
+  if (matchedApp) {
+    return res.json({ success: true, type: 'cita', data: matchedApp, timestamp: state.lastUpdated });
+  }
+
+  return res.status(404).json({ success: false, error: 'Registro de seguimiento no encontrado' });
+});
+
+app.get('/api/database', (req, res) => {
+  res.json({
+    success: true,
+    data: state,
+    connectedClients: wss.clients.size,
+    timestamp: state.lastUpdated,
+  });
 });
 
 app.get('/api/state', (req, res) => {
@@ -432,14 +471,268 @@ app.get('/api/state', (req, res) => {
     success: true,
     data: state,
     connectedClients: wss.clients.size,
+    timestamp: state.lastUpdated,
   });
+});
+
+// Specialized Direct Database Mutation Endpoints
+app.post('/api/users/update', (req, res) => {
+  try {
+    const { user } = req.body;
+    if (!user || !user.id) {
+      return res.status(400).json({ success: false, error: 'Datos de usuario requeridos' });
+    }
+    const idx = state.users.findIndex(u => u.id === user.id);
+    if (idx >= 0) {
+      state.users[idx] = { ...state.users[idx], ...user };
+    } else {
+      state.users.push(user);
+    }
+    persistDatabaseState();
+    broadcastAll({
+      type: 'USER_UPDATED',
+      payload: { user: state.users.find(u => u.id === user.id) },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true, user: state.users.find(u => u.id === user.id) });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/work-orders/save', (req, res) => {
+  try {
+    const { order, notification } = req.body;
+    if (!order || !order.id) {
+      return res.status(400).json({ success: false, error: 'Datos de orden requeridos' });
+    }
+    const idx = state.workOrders.findIndex(o => o.id === order.id);
+    if (idx >= 0) {
+      state.workOrders[idx] = { ...state.workOrders[idx], ...order };
+    } else {
+      state.workOrders = [order, ...state.workOrders];
+    }
+    if (notification) {
+      const notifExists = state.mechanicNotifications.some(n => n.id === notification.id);
+      if (!notifExists) {
+        state.mechanicNotifications = [notification, ...state.mechanicNotifications];
+      }
+    }
+    persistDatabaseState();
+    broadcastAll({
+      type: 'WORK_ORDER_UPDATED',
+      payload: { order, notification },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true, order });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/work-orders/delete', (req, res) => {
+  try {
+    const { id } = req.body;
+    state.workOrders = state.workOrders.filter(o => o.id !== id);
+    persistDatabaseState();
+    broadcastAll({
+      type: 'WORK_ORDER_DELETED',
+      payload: { otId: id },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/appointments/save', (req, res) => {
+  try {
+    const { appointment } = req.body;
+    if (!appointment || !appointment.id) {
+      return res.status(400).json({ success: false, error: 'Datos de cita requeridos' });
+    }
+    const idx = state.appointments.findIndex(a => a.id === appointment.id);
+    if (idx >= 0) {
+      state.appointments[idx] = { ...state.appointments[idx], ...appointment };
+    } else {
+      state.appointments = [appointment, ...state.appointments];
+    }
+    persistDatabaseState();
+    broadcastAll({
+      type: 'APPOINTMENT_UPDATED',
+      payload: { appointment },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true, appointment });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/appointments/delete', (req, res) => {
+  try {
+    const { id } = req.body;
+    state.appointments = state.appointments.filter(a => a.id !== id);
+    persistDatabaseState();
+    broadcastAll({
+      type: 'APPOINTMENT_DELETED',
+      payload: { appointmentId: id },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/clients/save', (req, res) => {
+  try {
+    const { client } = req.body;
+    if (!client || !client.id) {
+      return res.status(400).json({ success: false, error: 'Datos de cliente requeridos' });
+    }
+    const idx = state.clients.findIndex(c => c.id === client.id);
+    if (idx >= 0) {
+      state.clients[idx] = { ...state.clients[idx], ...client };
+    } else {
+      state.clients = [client, ...state.clients];
+    }
+    persistDatabaseState();
+    broadcastAll({
+      type: 'CLIENT_UPDATED',
+      payload: { client },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true, client });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/clients/delete', (req, res) => {
+  try {
+    const { id } = req.body;
+    state.clients = state.clients.filter(c => c.id !== id);
+    persistDatabaseState();
+    broadcastAll({
+      type: 'CLIENT_DELETED',
+      payload: { clientId: id },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/parts/save', (req, res) => {
+  try {
+    const { part } = req.body;
+    if (!part || !part.id) {
+      return res.status(400).json({ success: false, error: 'Datos de repuesto requeridos' });
+    }
+    const idx = state.parts.findIndex(p => p.id === part.id);
+    if (idx >= 0) {
+      state.parts[idx] = { ...state.parts[idx], ...part };
+    } else {
+      state.parts = [part, ...state.parts];
+    }
+    persistDatabaseState();
+    broadcastAll({
+      type: 'PART_UPDATED',
+      payload: { part },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true, part });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/parts/delete', (req, res) => {
+  try {
+    const { id } = req.body;
+    state.parts = state.parts.filter(p => p.id !== id);
+    persistDatabaseState();
+    broadcastAll({
+      type: 'PART_DELETED',
+      payload: { partId: id },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/budgets/save', (req, res) => {
+  try {
+    const { budget } = req.body;
+    if (!budget || !budget.id) {
+      return res.status(400).json({ success: false, error: 'Datos de presupuesto requeridos' });
+    }
+    const idx = state.budgets.findIndex(b => b.id === budget.id);
+    if (idx >= 0) {
+      state.budgets[idx] = { ...state.budgets[idx], ...budget };
+    } else {
+      state.budgets = [budget, ...state.budgets];
+    }
+    persistDatabaseState();
+    broadcastAll({
+      type: 'BUDGET_UPDATED',
+      payload: { budget },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true, budget });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/budgets/delete', (req, res) => {
+  try {
+    const { id } = req.body;
+    state.budgets = state.budgets.filter(b => b.id !== id);
+    persistDatabaseState();
+    broadcastAll({
+      type: 'BUDGET_DELETED',
+      payload: { budgetId: id },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 app.post('/api/sync', (req, res) => {
   try {
     const incoming = req.body;
-    if (incoming) {
-      state = { ...state, ...incoming, lastUpdated: new Date().toISOString() };
+    if (incoming && typeof incoming === 'object') {
+      const keys: (keyof WorkshopDatabaseState)[] = [
+        'clients',
+        'parts',
+        'appointments',
+        'budgets',
+        'workOrders',
+        'notifications',
+        'users',
+        'mechanicNotifications',
+      ];
+
+      for (const k of keys) {
+        if (Array.isArray(incoming[k])) {
+          // If server already has items and incoming is an empty array from a cold client, protect existing data!
+          if (incoming[k].length === 0 && Array.isArray((state as any)[k]) && (state as any)[k].length > 0) {
+            // Keep existing non-empty server data
+            continue;
+          }
+          (state as any)[k] = incoming[k];
+        }
+      }
+
+      state.lastUpdated = new Date().toISOString();
       persistDatabaseState();
       broadcastAll({
         type: 'STATE_SYNCED',
@@ -502,6 +795,16 @@ async function startServer() {
       appType: 'spa',
     });
     app.use(vite.middlewares);
+    app.use('*', async (req, res, next) => {
+      try {
+        const url = req.originalUrl;
+        let template = fs.readFileSync(path.resolve('index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        next(e);
+      }
+    });
   } else {
     // Check if dist/index.html was built; if not, try to build it automatically
     if (!fs.existsSync(distIndex)) {

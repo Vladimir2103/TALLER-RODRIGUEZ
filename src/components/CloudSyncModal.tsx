@@ -171,19 +171,6 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({ isOpen, onClose,
               >
                 Ver pantalla de carga con logo original
               </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm('¿Restablecer datos de muestra del taller?')) {
-                    resetToSampleData();
-                    onClose();
-                  }
-                }}
-                className="text-xs text-neutral-500 hover:text-neutral-300 underline underline-offset-4 cursor-pointer"
-              >
-                Restablecer datos iniciales
-              </button>
             </div>
           </div>
         </div>

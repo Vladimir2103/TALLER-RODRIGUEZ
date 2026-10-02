@@ -18,8 +18,10 @@ import {
   Edit2,
   Trash2,
   X,
+  Share2,
 } from 'lucide-react';
 import { WORKSHOP_CONFIG } from '../data/initialData';
+import { ShareTrackingModal } from './ShareTrackingModal';
 
 interface AppointmentsViewProps {
   onOpenWhatsApp: (phone: string, clientName: string, template: any, data: any) => void;
@@ -52,6 +54,8 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'tomorrow' | 'week'>('all');
   const [isModalOpen, setIsModalOpen] = useState(isCreateModalOpen);
   const [editingApp, setEditingApp] = useState<Appointment | null>(null);
+  const [selectedAppForShare, setSelectedAppForShare] = useState<Appointment | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Form State
   const [clientName, setClientName] = useState('');
@@ -120,6 +124,7 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
       return;
     }
 
+    let createdApp: Appointment | null = null;
     if (editingApp) {
       updateAppointment(editingApp.id, {
         clientName,
@@ -135,7 +140,7 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
         notes,
       });
     } else {
-      addAppointment({
+      createdApp = addAppointment({
         clientName,
         clientPhone,
         vehiclePlate,
@@ -152,6 +157,10 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
 
     setIsModalOpen(false);
     if (onCloseCreateModal) onCloseCreateModal();
+    if (createdApp) {
+      setSelectedAppForShare(createdApp);
+      setIsShareModalOpen(true);
+    }
   };
 
   // Date filters helper
@@ -331,6 +340,19 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
 
                 {/* Right: Actions */}
                 <div className="flex items-center justify-between lg:justify-end gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-neutral-800">
+                  {/* Share Tracking Link */}
+                  <button
+                    onClick={() => {
+                      setSelectedAppForShare(app);
+                      setIsShareModalOpen(true);
+                    }}
+                    className="px-2.5 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                    title="Generar y compartir link de seguimiento en vivo con el cliente"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Link Seguimiento</span>
+                  </button>
+
                   {/* WhatsApp confirmation */}
                   <button
                     onClick={() =>
@@ -572,6 +594,14 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal: Compartir Link de Seguimiento en Vivo con el Cliente */}
+      <ShareTrackingModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        type="cita"
+        item={selectedAppForShare}
+      />
     </div>
   );
 };

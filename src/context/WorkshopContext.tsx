@@ -36,6 +36,7 @@ interface WorkshopContextType {
   syncStatus: 'synced' | 'syncing' | 'offline';
   lastSyncedAt: string;
   triggerCloudSync: () => void;
+  isDbReady: boolean;
   // Real-Time & Multi-user status
   connectedClients: number;
   isRealtimeConnected: boolean;
@@ -104,74 +105,78 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [clients, setClients] = useState<Client[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_clients`);
-      return saved ? JSON.parse(saved) : INITIAL_CLIENTS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_CLIENTS;
+      return [];
     }
   });
 
   const [parts, setParts] = useState<Part[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_parts`);
-      return saved ? JSON.parse(saved) : INITIAL_PARTS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_PARTS;
+      return [];
     }
   });
 
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_appointments`);
-      return saved ? JSON.parse(saved) : INITIAL_APPOINTMENTS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_APPOINTMENTS;
+      return [];
     }
   });
 
   const [budgets, setBudgets] = useState<Budget[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_budgets`);
-      return saved ? JSON.parse(saved) : INITIAL_BUDGETS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_BUDGETS;
+      return [];
     }
   });
 
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_workOrders`);
-      return saved ? JSON.parse(saved) : INITIAL_WORK_ORDERS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_WORK_ORDERS;
+      return [];
     }
   });
 
   const [notifications, setNotifications] = useState<NotificationLog[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_notifications`);
-      return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_NOTIFICATIONS;
+      return [];
     }
   });
 
   const [users, setUsers] = useState<User[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_users`);
-      return saved ? JSON.parse(saved) : INITIAL_USERS;
-    } catch {
-      return INITIAL_USERS;
-    }
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
   });
 
   const [mechanicNotifications, setMechanicNotifications] = useState<MechanicAssignmentNotification[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_mechanicNotifications`);
-      return saved ? JSON.parse(saved) : INITIAL_MECHANIC_NOTIFICATIONS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_MECHANIC_NOTIFICATIONS;
+      return [];
     }
   });
+
+  const [isDbReady, setIsDbReady] = useState<boolean>(false);
 
   // Seguridd de sesión:
   // Al recargar la página o cerrar la pestaña, NO se guarda la sesión en localStorage.
@@ -253,8 +258,23 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const wsRef = useRef<WebSocket | null>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);
 
-  // Auto-persist to localStorage (bases de datos seguras, pero sesión de usuario en memoria)
+  const syncTimerRef = useRef<any>(null);
+  // Control de sincronización autoritativa para proteger la base de datos de sobreescrituras en frío
+  const isInitializedFromServerRef = useRef<boolean>(false);
+  const hasUserMutatedRef = useRef<boolean>(false);
+
+  // Marcar explícitamente mutación de usuario
+  const registerUserMutation = () => {
+    hasUserMutatedRef.current = true;
+  };
+
+  // Auto-persist to localStorage AND authoritative server database (workshop_database.json)
   useEffect(() => {
+    // Si aún no se ha cargado la base de datos autoritativa del servidor, no sincronizar hacia el servidor
+    if (!isInitializedFromServerRef.current) {
+      return;
+    }
+
     try {
       localStorage.setItem(`${STORAGE_KEY}_clients`, JSON.stringify(clients));
       localStorage.setItem(`${STORAGE_KEY}_parts`, JSON.stringify(parts));
@@ -270,10 +290,39 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (e) {
       console.error('Failed to save to localStorage', e);
     }
+
+    // Guardado persistente automático e inmediato en la base de datos del servidor (/api/sync)
+    // SÓLO cuando el usuario haya realizado una modificación real para evitar sobrescribir con valores por defecto
+    if (hasUserMutatedRef.current) {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(() => {
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clients,
+            parts,
+            appointments,
+            budgets,
+            workOrders,
+            notifications,
+            mechanicNotifications,
+            users,
+          }),
+        }).catch(err => {
+          console.warn('Auto-save to database failed:', err);
+        });
+      }, 250);
+    }
+
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
   }, [clients, parts, appointments, budgets, workOrders, notifications, mechanicNotifications, users]);
 
   // Periodic heartbeat sync indicator
   const triggerCloudSync = () => {
+    registerUserMutation();
     setSyncStatus('syncing');
     setTimeout(() => {
       setSyncStatus('synced');
@@ -283,6 +332,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Helper to send real-time events to both WebSocket server and BroadcastChannel
   const sendRealtimeEvent = (type: string, payload: any) => {
+    registerUserMutation();
     const message = JSON.stringify({ type, payload });
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(message);
@@ -307,12 +357,13 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const p = data.payload;
         if (!p) break;
         if (p.workOrders) setWorkOrders(p.workOrders);
-        if (p.users) setUsers(p.users);
+        if (p.users && Array.isArray(p.users) && p.users.length > 0) setUsers(p.users);
         if (p.mechanicNotifications) setMechanicNotifications(p.mechanicNotifications);
         if (p.clients) setClients(p.clients);
         if (p.parts) setParts(p.parts);
         if (p.appointments) setAppointments(p.appointments);
         if (p.budgets) setBudgets(p.budgets);
+        isInitializedFromServerRef.current = true;
         break;
       }
 
@@ -605,7 +656,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     connectWS();
 
     // 3. Authoritative server database state fetch on load
-    fetch('/api/state')
+    fetch('/api/database')
       .then(r => r.json())
       .then(res => {
         if (res && res.success && res.data) {
@@ -618,10 +669,20 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (Array.isArray(p.workOrders)) setWorkOrders(p.workOrders);
           if (Array.isArray(p.users) && p.users.length > 0) setUsers(p.users);
           if (Array.isArray(p.mechanicNotifications)) setMechanicNotifications(p.mechanicNotifications);
+          isInitializedFromServerRef.current = true;
+          // Sync to local cache
+          try {
+            if (Array.isArray(p.users)) localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(p.users));
+            if (Array.isArray(p.clients)) localStorage.setItem(`${STORAGE_KEY}_clients`, JSON.stringify(p.clients));
+            if (Array.isArray(p.workOrders)) localStorage.setItem(`${STORAGE_KEY}_workOrders`, JSON.stringify(p.workOrders));
+          } catch {}
         }
       })
       .catch(err => {
         console.warn('Could not fetch server state on load', err);
+      })
+      .finally(() => {
+        setIsDbReady(true);
       });
 
     return () => {
@@ -658,6 +719,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       createdAt: new Date().toISOString().split('T')[0],
     };
     setClients(prev => [newClient, ...prev]);
+    fetch('/api/clients/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client: newClient }),
+    }).catch(e => console.warn(e));
     sendRealtimeEvent('CLIENT_CREATE', { client: newClient });
     triggerCloudSync();
     return newClient;
@@ -675,6 +741,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
     );
     if (updatedClient) {
+      fetch('/api/clients/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client: updatedClient }),
+      }).catch(e => console.warn(e));
       sendRealtimeEvent('CLIENT_UPDATE', { client: updatedClient });
     }
     triggerCloudSync();
@@ -682,6 +753,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteClient = (id: string) => {
     setClients(prev => prev.filter(c => c.id !== id));
+    fetch('/api/clients/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).catch(e => console.warn(e));
     sendRealtimeEvent('CLIENT_DELETE', { clientId: id });
     triggerCloudSync();
   };
@@ -693,6 +769,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       id: `part-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     };
     setParts(prev => [newPart, ...prev]);
+    fetch('/api/parts/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ part: newPart }),
+    }).catch(e => console.warn(e));
     sendRealtimeEvent('PART_CREATE', { part: newPart });
     triggerCloudSync();
     return newPart;
@@ -710,6 +791,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
     );
     if (updatedPart) {
+      fetch('/api/parts/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ part: updatedPart }),
+      }).catch(e => console.warn(e));
       sendRealtimeEvent('PART_UPDATE', { part: updatedPart });
     }
     triggerCloudSync();
@@ -717,14 +803,33 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deletePart = (id: string) => {
     setParts(prev => prev.filter(p => p.id !== id));
+    fetch('/api/parts/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).catch(e => console.warn(e));
     sendRealtimeEvent('PART_DELETE', { partId: id });
     triggerCloudSync();
   };
 
   const adjustPartStock = (id: string, delta: number) => {
+    let updatedPart: Part | null = null;
     setParts(prev =>
-      prev.map(p => (p.id === id ? { ...p, stockQuantity: Math.max(0, p.stockQuantity + delta) } : p))
+      prev.map(p => {
+        if (p.id === id) {
+          updatedPart = { ...p, stockQuantity: Math.max(0, p.stockQuantity + delta) };
+          return updatedPart;
+        }
+        return p;
+      })
     );
+    if (updatedPart) {
+      fetch('/api/parts/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ part: updatedPart }),
+      }).catch(e => console.warn(e));
+    }
     sendRealtimeEvent('PART_STOCK_ADJUST', { id, delta });
     triggerCloudSync();
   };
@@ -737,6 +842,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       createdAt: new Date().toISOString().split('T')[0],
     };
     setAppointments(prev => [newApp, ...prev]);
+    fetch('/api/appointments/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appointment: newApp }),
+    }).catch(e => console.warn(e));
     sendRealtimeEvent('APPOINTMENT_CREATE', { appointment: newApp });
     triggerCloudSync();
     return newApp;
@@ -754,6 +864,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
     );
     if (updatedApp) {
+      fetch('/api/appointments/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointment: updatedApp }),
+      }).catch(e => console.warn(e));
       sendRealtimeEvent('APPOINTMENT_UPDATE', { appointment: updatedApp });
     }
     triggerCloudSync();
@@ -761,6 +876,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteAppointment = (id: string) => {
     setAppointments(prev => prev.filter(a => a.id !== id));
+    fetch('/api/appointments/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).catch(e => console.warn(e));
     sendRealtimeEvent('APPOINTMENT_DELETE', { appointmentId: id });
     triggerCloudSync();
   };
@@ -787,6 +907,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     setBudgets(prev => [newBudget, ...prev]);
+    fetch('/api/budgets/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ budget: newBudget }),
+    }).catch(e => console.warn(e));
     sendRealtimeEvent('BUDGET_CREATE', { budget: newBudget });
     triggerCloudSync();
     return newBudget;
@@ -806,6 +931,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
     );
     if (updatedBudget) {
+      fetch('/api/budgets/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ budget: updatedBudget }),
+      }).catch(e => console.warn(e));
       sendRealtimeEvent('BUDGET_UPDATE', { budget: updatedBudget });
     }
     triggerCloudSync();
@@ -813,6 +943,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteBudget = (id: string) => {
     setBudgets(prev => prev.filter(b => b.id !== id));
+    fetch('/api/budgets/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).catch(e => console.warn(e));
     sendRealtimeEvent('BUDGET_DELETE', { budgetId: id });
     triggerCloudSync();
   };
@@ -965,6 +1100,12 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
+    fetch('/api/work-orders/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: newOrder, notification }),
+    }).catch(e => console.warn(e));
+
     sendRealtimeEvent('WORK_ORDER_CREATE', { order: newOrder, notification });
     triggerCloudSync();
     return newOrder;
@@ -995,6 +1136,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
 
     if (updatedOrder) {
+      fetch('/api/work-orders/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: updatedOrder }),
+      }).catch(e => console.warn(e));
       sendRealtimeEvent('WORK_ORDER_UPDATE', { order: updatedOrder });
     }
     triggerCloudSync();
@@ -1031,6 +1177,12 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setActiveAlertToast(notification);
     }
 
+    fetch('/api/work-orders/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: { ...order, assignedTechnician: newTechnician }, notification }),
+    }).catch(e => console.warn(e));
+
     sendRealtimeEvent('WORK_ORDER_REASSIGN', { otId, newTechnician, notification });
     triggerCloudSync();
   };
@@ -1044,6 +1196,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteWorkOrder = (id: string) => {
     setWorkOrders(prev => prev.filter(o => o.id !== id));
+    fetch('/api/work-orders/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).catch(e => console.warn(e));
     sendRealtimeEvent('WORK_ORDER_DELETE', { otId: id });
     triggerCloudSync();
   };
@@ -1201,6 +1358,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       createdAt: new Date().toISOString().split('T')[0],
     };
     setUsers(prev => [...prev, newUser]);
+    fetch('/api/users/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: newUser }),
+    }).catch(e => console.warn(e));
     sendRealtimeEvent('USER_CREATE', { user: newUser });
     triggerCloudSync();
     return newUser;
@@ -1222,6 +1384,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
     );
     if (updatedUser) {
+      fetch('/api/users/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: updatedUser }),
+      }).catch(e => console.warn(e));
       sendRealtimeEvent('USER_UPDATE', { user: updatedUser });
     }
     triggerCloudSync();
@@ -1234,6 +1401,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const remainingBoss = users.find(u => u.role === 'boss' && u.id !== id);
       setCurrentUser(remainingBoss || null);
     }
+    fetch('/api/users/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).catch(e => console.warn(e));
     sendRealtimeEvent('USER_DELETE', { userId: id });
     triggerCloudSync();
   };
@@ -1260,6 +1432,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
     );
     if (updatedUser) {
+      fetch('/api/users/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: updatedUser }),
+      }).catch(e => console.warn(e));
       sendRealtimeEvent('USER_UPDATE', { user: updatedUser });
     }
     triggerCloudSync();
@@ -1312,8 +1489,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const resetToSampleData = () => {
-    setUsers(INITIAL_USERS);
-    setCurrentUser(INITIAL_USERS[0]);
+    // Keep existing database users intact so user accounts and modifications are preserved forever!
     setClients(INITIAL_CLIENTS);
     setParts(INITIAL_PARTS);
     setAppointments(INITIAL_APPOINTMENTS);
@@ -1336,8 +1512,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setWorkOrders([]);
     setNotifications([]);
     setMechanicNotifications([]);
-    setUsers(INITIAL_USERS);
-    setCurrentUser(INITIAL_USERS[0]);
+    // Do not touch users - preserve credentials
     triggerCloudSync();
   };
 
@@ -1371,6 +1546,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         syncStatus,
         lastSyncedAt,
         triggerCloudSync,
+        isDbReady,
         connectedClients,
         isRealtimeConnected,
         activeAlertToast,

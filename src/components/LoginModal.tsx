@@ -13,7 +13,9 @@ import {
   Wrench,
   Clock,
   MapPin,
+  Smartphone,
 } from 'lucide-react';
+import { PWAInstallButton } from './PWAInstallButton';
 import confetti from 'canvas-confetti';
 
 interface LoginModalProps {
@@ -213,6 +215,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               )}
             </button>
           </form>
+
+          {/* Android PWA Install button */}
+          <div className="mt-3">
+            <PWAInstallButton variant="login" />
+          </div>
 
           {/* Security policy note */}
           <div className="mt-4 pt-3.5 border-t border-neutral-800/60 flex items-center justify-center gap-1.5 text-[11px] text-neutral-400 text-center font-mono">

@@ -19,6 +19,8 @@ import { WhatsAppModal } from './components/WhatsAppModal';
 import { CloudSyncModal } from './components/CloudSyncModal';
 import { EditProfileModal } from './components/EditProfileModal';
 import { NotificationsDrawer } from './components/NotificationsDrawer';
+import { ClientTrackingPortal } from './components/ClientTrackingPortal';
+import { PWAInstallButton } from './components/PWAInstallButton';
 import {
   LayoutDashboard,
   Calendar,
@@ -46,6 +48,56 @@ import {
 } from 'lucide-react';
 import { WORKSHOP_CONFIG } from './data/initialData';
 import { Appointment, Client, Vehicle } from './types';
+
+function parseTrackingUrl(): { type: 'ot' | 'cita'; id: string } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const url = new URL(window.location.href);
+    const searchParams = url.searchParams;
+    const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
+    const hashParams = new URLSearchParams(hash);
+
+    // 1. Path-based tracking (/seguimiento/ot-xxx, /track/ot-xxx, /tracking/ot-xxx)
+    const segments = url.pathname.split('/').filter(Boolean);
+    if (segments.length > 0) {
+      const first = segments[0].toLowerCase();
+      if (first === 'seguimiento' || first === 'track' || first === 'tracking') {
+        if (segments.length >= 2) {
+          const second = segments[1].toLowerCase();
+          if (second === 'ot' || second === 'cita') {
+            if (segments[2]) return { type: second, id: decodeURIComponent(segments[2]) };
+          }
+          return { type: 'ot', id: decodeURIComponent(segments[1]) };
+        }
+      }
+    }
+
+    // 2. Query param based tracking (?track=ot&id=xxx)
+    const track = searchParams.get('track') || hashParams.get('track');
+    const id = searchParams.get('id') || hashParams.get('id');
+
+    if (track === 'ot' && id) return { type: 'ot', id: id.trim() };
+    if (track === 'cita' && id) return { type: 'cita', id: id.trim() };
+
+    const tracking = searchParams.get('tracking') || hashParams.get('tracking');
+    if (tracking) {
+      const cleanTracking = tracking.trim();
+      if (cleanTracking.startsWith('app-') || cleanTracking.startsWith('cita-')) {
+        return { type: 'cita', id: cleanTracking };
+      }
+      return { type: 'ot', id: cleanTracking };
+    }
+
+    const otParam = searchParams.get('ot') || hashParams.get('ot');
+    if (otParam) return { type: 'ot', id: otParam.trim() };
+
+    const citaParam = searchParams.get('cita') || hashParams.get('cita');
+    if (citaParam) return { type: 'cita', id: citaParam.trim() };
+  } catch {
+    // Ignore URL parse error
+  }
+  return null;
+}
 
 function WorkshopApp() {
   const {
@@ -127,6 +179,20 @@ function WorkshopApp() {
     setActiveTab('work_orders');
     setIsCreateOTOpen(true);
   };
+
+  // Portal de seguimiento en tiempo real para clientes (NO requiere login, 100% de solo lectura)
+  const [trackingTarget, setTrackingTarget] = useState<{ type: 'ot' | 'cita'; id: string } | null>(
+    () => parseTrackingUrl()
+  );
+
+  if (trackingTarget) {
+    return (
+      <ClientTrackingPortal
+        type={trackingTarget.type}
+        id={trackingTarget.id}
+      />
+    );
+  }
 
   if (!currentUser) {
     return (
@@ -256,6 +322,9 @@ function WorkshopApp() {
 
           {/* Zone 3: 1-2 primary actions */}
           <div className="flex items-center gap-2">
+            {/* PWA Install Button for Android / Desktop */}
+            <PWAInstallButton variant="header" />
+
             {/* Cloud Sync Status Indicator button */}
             <button
               onClick={() => setIsCloudModalOpen(true)}

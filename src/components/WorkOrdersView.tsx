@@ -78,6 +78,8 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(isCreateModalOpen || Boolean(prefilledAppointment));
   const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<WorkOrder | null>(null);
   const [orderForAssign, setOrderForAssign] = useState<WorkOrder | null>(null);
+  const [selectedOrderForShare, setSelectedOrderForShare] = useState<WorkOrder | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Form state
   const [clientId, setClientId] = useState('');
@@ -211,6 +213,8 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
     confetti({ particleCount: 45, spread: 60, origin: { y: 0.6 } });
     setIsModalOpen(false);
     if (onCloseCreateModal) onCloseCreateModal();
+    setSelectedOrderForShare(newOT);
+    setIsShareModalOpen(true);
   };
 
   const filteredOrders = workOrders.filter(o => {
@@ -545,6 +549,16 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setSelectedOrderForShare(order);
+                              setIsShareModalOpen(true);
+                            }}
+                            className="p-1.5 text-blue-400 hover:text-white hover:bg-blue-500/20 rounded transition-colors cursor-pointer"
+                            title="Generar y compartir link de seguimiento en vivo con el cliente"
+                          >
+                            <Share2 className="w-3.5 h-3.5" />
+                          </button>
                           <button
                             onClick={() => setSelectedOrderForPrint(order)}
                             className="p-1.5 text-neutral-400 hover:text-white rounded transition-colors cursor-pointer"
@@ -952,6 +966,17 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
               <span className="text-xs font-semibold text-white">Hoja de Taller & Orden de Trabajo</span>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => {
+                    setSelectedOrderForShare(selectedOrderForPrint);
+                    setIsShareModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title="Compartir link de seguimiento en tiempo real con el cliente"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Link Seguimiento</span>
+                </button>
+                <button
                   onClick={() => window.print()}
                   className="px-3 py-1.5 text-xs font-medium text-white bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
@@ -1160,6 +1185,14 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
         order={orderForAssign}
         isOpen={Boolean(orderForAssign)}
         onClose={() => setOrderForAssign(null)}
+      />
+
+      {/* Modal: Compartir Link de Seguimiento en Vivo con el Cliente */}
+      <ShareTrackingModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        type="ot"
+        item={selectedOrderForShare}
       />
     </div>
   );

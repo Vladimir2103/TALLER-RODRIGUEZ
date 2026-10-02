@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "Taller Rodríguez Rodríguez",
+  "short_name": "Taller RR",
+  "description": "Sistema Integral de Gestión Automotriz - Taller Rodríguez Rodríguez (El Salvador, Usulután)",
+  "theme_color": "#0a0a0c",
+  "background_color": "#0a0a0c",
+  "display": "standalone",
+  "orientation": "portrait",
+  "start_url": "/",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

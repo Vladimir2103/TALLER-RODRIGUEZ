@@ -28,18 +28,17 @@ import {
   ExternalLink,
   Lock,
 } from 'lucide-react';
+import { PWAInstallButton } from './PWAInstallButton';
 import confetti from 'canvas-confetti';
 
 interface ClientTrackingPortalProps {
   type: 'ot' | 'cita';
   id: string;
-  onExitToStaffLogin?: () => void;
 }
 
 export const ClientTrackingPortal: React.FC<ClientTrackingPortalProps> = ({
   type,
   id,
-  onExitToStaffLogin,
 }) => {
   const { workOrders, appointments, syncStatus } = useWorkshop();
   const [copiedLink, setCopiedLink] = useState(false);
@@ -257,15 +256,6 @@ export const ClientTrackingPortal: React.FC<ClientTrackingPortalProps> = ({
               <MessageCircle className="w-4 h-4 fill-white" />
               <span>Contactar al Taller por WhatsApp</span>
             </a>
-            {onExitToStaffLogin && (
-              <button
-                onClick={onExitToStaffLogin}
-                className="w-full py-2.5 px-4 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Acceso Personal del Taller (Iniciar Sesión)</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -330,6 +320,9 @@ export const ClientTrackingPortal: React.FC<ClientTrackingPortalProps> = ({
 
           {/* Right Live Beacon & Share / Staff Switch */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* PWA Install Button for Android / Phone */}
+            <PWAInstallButton variant="header" />
+
             {/* Live Indicator */}
             <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-mono font-bold tracking-wider uppercase">
               <span className="relative flex h-2 w-2">
@@ -346,22 +339,15 @@ export const ClientTrackingPortal: React.FC<ClientTrackingPortalProps> = ({
             >
               {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
             </button>
-
-            {onExitToStaffLogin && (
-              <button
-                onClick={onExitToStaffLogin}
-                className="text-[11px] font-mono text-neutral-400 hover:text-white px-2 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 cursor-pointer transition-colors"
-                title="Acceso para mecánicos y jefe de taller"
-              >
-                Acceso Personal
-              </button>
-            )}
           </div>
         </div>
       </header>
 
       {/* Main Container */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-5">
+        {/* Banner para Descargar/Instalar como App en Android o teléfono */}
+        <PWAInstallButton variant="banner" />
+
         {/* Read-Only Client Banner */}
         <div className="p-3 sm:p-3.5 rounded-xl bg-neutral-900/90 border border-neutral-800 flex items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2 text-neutral-300">
