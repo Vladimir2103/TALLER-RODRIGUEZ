@@ -99,7 +99,7 @@ interface WorkshopContextType {
 
 const WorkshopContext = createContext<WorkshopContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'taller_rodriguez_data_v3_clean';
+const STORAGE_KEY = 'taller_rodriguez_data_v4_prod';
 
 export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [clients, setClients] = useState<Client[]>(() => {
@@ -164,7 +164,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
-    return [];
+    return INITIAL_USERS;
   });
 
   const [mechanicNotifications, setMechanicNotifications] = useState<MechanicAssignmentNotification[]>(() => {
@@ -178,11 +178,33 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [isDbReady, setIsDbReady] = useState<boolean>(false);
 
-  // Seguridd de sesión:
+  // Seguridad de sesión:
   // Al recargar la página o cerrar la pestaña, NO se guarda la sesión en localStorage.
   // El usuario siempre deberá iniciar sesión nuevamente.
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [logoutReason, setLogoutReason] = useState<string | null>(null);
+
+  // Sincronización en caliente inmediata de permisos y estado del usuario activo
+  useEffect(() => {
+    if (currentUser) {
+      const fresh = users.find(u => u.id === currentUser.id);
+      if (fresh) {
+        const permsChanged = JSON.stringify(fresh.permissions) !== JSON.stringify(currentUser.permissions);
+        const roleChanged = fresh.role !== currentUser.role;
+        const activeChanged = fresh.isActive !== currentUser.isActive;
+        const nameChanged = fresh.name !== currentUser.name;
+
+        if (permsChanged || roleChanged || activeChanged || nameChanged) {
+          if (!fresh.isActive) {
+            setCurrentUser(null);
+            setLogoutReason('Esta cuenta ha sido desactivada por el Jefe de Taller.');
+          } else {
+            setCurrentUser(fresh);
+          }
+        }
+      }
+    }
+  }, [users, currentUser]);
 
   // Limpieza inicial de cualquier sesión previa en localStorage/sessionStorage
   useEffect(() => {
@@ -642,6 +664,14 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Clean up legacy mock data keys from older versions
     try {
       const legacyKeys = [
+        'taller_rodriguez_data_v3_clean_clients',
+        'taller_rodriguez_data_v3_clean_parts',
+        'taller_rodriguez_data_v3_clean_appointments',
+        'taller_rodriguez_data_v3_clean_budgets',
+        'taller_rodriguez_data_v3_clean_workOrders',
+        'taller_rodriguez_data_v3_clean_notifications',
+        'taller_rodriguez_data_v3_clean_mechanicNotifications',
+        'taller_rodriguez_data_v3_clean_users',
         'taller_rodriguez_data_v2_usd_clients',
         'taller_rodriguez_data_v2_usd_parts',
         'taller_rodriguez_data_v2_usd_appointments',
@@ -712,6 +742,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Client Management
   const addClient = (data: Omit<Client, 'id' | 'totalSpent' | 'createdAt'>): Client => {
+    if (!hasPermission('canManageClients')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para crear o registrar clientes (canManageClients).');
+      throw new Error('Unauthorized: canManageClients required');
+    }
     const newClient: Client = {
       ...data,
       id: `cli-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -730,6 +764,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateClient = (id: string, updates: Partial<Client>) => {
+    if (!hasPermission('canManageClients')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para modificar datos de clientes o vehículos (canManageClients).');
+      return;
+    }
     let updatedClient: Client | null = null;
     setClients(prev =>
       prev.map(c => {
@@ -752,6 +790,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deleteClient = (id: string) => {
+    if (!hasPermission('canDeleteRecords')) {
+      alert('🔒 Acción Bloqueada: Tu rol de usuario no tiene permiso para eliminar clientes (canDeleteRecords).');
+      return;
+    }
     setClients(prev => prev.filter(c => c.id !== id));
     fetch('/api/clients/delete', {
       method: 'POST',
@@ -764,6 +806,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Parts Management
   const addPart = (data: Omit<Part, 'id'>): Part => {
+    if (!hasPermission('canManageInventory')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para agregar repuestos al inventario (canManageInventory).');
+      throw new Error('Unauthorized: canManageInventory required');
+    }
     const newPart: Part = {
       ...data,
       id: `part-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -780,6 +826,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updatePart = (id: string, updates: Partial<Part>) => {
+    if (!hasPermission('canManageInventory')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para modificar repuestos o precios (canManageInventory).');
+      return;
+    }
     let updatedPart: Part | null = null;
     setParts(prev =>
       prev.map(p => {
@@ -802,6 +852,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deletePart = (id: string) => {
+    if (!hasPermission('canDeleteRecords')) {
+      alert('🔒 Acción Bloqueada: Tu rol de usuario no tiene permiso para eliminar repuestos del inventario (canDeleteRecords).');
+      return;
+    }
     setParts(prev => prev.filter(p => p.id !== id));
     fetch('/api/parts/delete', {
       method: 'POST',
@@ -813,6 +867,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const adjustPartStock = (id: string, delta: number) => {
+    if (!hasPermission('canManageInventory')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para modificar existencias de repuestos (canManageInventory).');
+      return;
+    }
     let updatedPart: Part | null = null;
     setParts(prev =>
       prev.map(p => {
@@ -836,6 +894,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Appointments
   const addAppointment = (data: Omit<Appointment, 'id' | 'createdAt'>): Appointment => {
+    if (!hasPermission('canManageAppointments')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para agendar citas (canManageAppointments).');
+      throw new Error('Unauthorized: canManageAppointments required');
+    }
     const newApp: Appointment = {
       ...data,
       id: `app-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -853,6 +915,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateAppointment = (id: string, updates: Partial<Appointment>) => {
+    if (!hasPermission('canManageAppointments')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para modificar citas (canManageAppointments).');
+      return;
+    }
     let updatedApp: Appointment | null = null;
     setAppointments(prev =>
       prev.map(a => {
@@ -875,6 +941,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deleteAppointment = (id: string) => {
+    if (!hasPermission('canDeleteRecords')) {
+      alert('🔒 Acción Bloqueada: Tu rol de usuario no tiene permiso para eliminar citas (canDeleteRecords).');
+      return;
+    }
     setAppointments(prev => prev.filter(a => a.id !== id));
     fetch('/api/appointments/delete', {
       method: 'POST',
@@ -889,6 +959,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const createBudget = (
     data: Omit<Budget, 'id' | 'quoteNumber' | 'createdAt' | 'subtotal' | 'taxAmount' | 'total'>
   ): Budget => {
+    if (!hasPermission('canManageBudgets')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para crear presupuestos (canManageBudgets).');
+      throw new Error('Unauthorized: canManageBudgets required');
+    }
     const subtotal = data.items.reduce((sum, item) => sum + item.total, 0);
     const taxAmount = (subtotal * (data.taxPercent || WORKSHOP_CONFIG.defaultTaxPercent)) / 100;
     const total = Math.max(0, subtotal + taxAmount - (data.discountAmount || 0));
@@ -918,6 +992,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateBudget = (id: string, updates: Partial<Budget>) => {
+    if (!hasPermission('canManageBudgets')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para modificar presupuestos (canManageBudgets).');
+      return;
+    }
     let updatedBudget: Budget | null = null;
     setBudgets(prev =>
       prev.map(b => {
@@ -942,6 +1020,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deleteBudget = (id: string) => {
+    if (!hasPermission('canDeleteRecords')) {
+      alert('🔒 Acción Bloqueada: Tu rol de usuario no tiene permiso para eliminar presupuestos (canDeleteRecords).');
+      return;
+    }
     setBudgets(prev => prev.filter(b => b.id !== id));
     fetch('/api/budgets/delete', {
       method: 'POST',
@@ -954,6 +1036,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 1-Click Convert Budget to Work Order
   const convertBudgetToWorkOrder = (budgetId: string): WorkOrder | null => {
+    if (!hasPermission('canManageWorkOrders')) {
+      alert('🔒 Acción Bloqueada: Requiere el permiso de gestión de órdenes de trabajo para convertir un presupuesto a OT (canManageWorkOrders).');
+      return null;
+    }
     const budget = budgets.find(b => b.id === budgetId);
     if (!budget) return null;
 
@@ -1039,6 +1125,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const createWorkOrder = (
     data: Omit<WorkOrder, 'id' | 'otNumber' | 'createdAt' | 'subtotal' | 'taxAmount' | 'laborTotal' | 'total'>
   ): WorkOrder => {
+    if (!hasPermission('canManageWorkOrders')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para crear órdenes de trabajo (canManageWorkOrders).');
+      throw new Error('Unauthorized: canManageWorkOrders required');
+    }
     const partsTotal = data.partsUsed.reduce((sum, p) => sum + p.total, 0);
     const laborTotal = (data.laborHours || 0) * (data.laborRatePerHour || WORKSHOP_CONFIG.defaultLaborRate);
     const subtotal = partsTotal + laborTotal;
@@ -1112,6 +1202,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateWorkOrder = (id: string, updates: Partial<WorkOrder>) => {
+    if (!hasPermission('canManageWorkOrders')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para modificar órdenes de trabajo (canManageWorkOrders).');
+      return;
+    }
     let updatedOrder: WorkOrder | null = null;
     setWorkOrders(prev =>
       prev.map(order => {
@@ -1147,6 +1241,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const reassignWorkOrder = (otId: string, newTechnician: string) => {
+    if (!hasPermission('canManageMechanics')) {
+      alert('🔒 Acción Bloqueada: Solo el Jefe de Taller o administradores pueden reasignar mecánicos (canManageMechanics).');
+      return;
+    }
     const order = workOrders.find(o => o.id === otId);
     if (!order) return;
 
@@ -1188,6 +1286,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateWorkOrderStage = (id: string, stage: WorkOrderStage) => {
+    if (!hasPermission('canManageWorkOrders')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para cambiar la etapa de órdenes de trabajo (canManageWorkOrders).');
+      return;
+    }
     updateWorkOrder(id, {
       stage,
       completedDate: stage === 'entregado' ? new Date().toISOString().split('T')[0] : undefined,
@@ -1195,6 +1297,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deleteWorkOrder = (id: string) => {
+    if (!hasPermission('canDeleteRecords')) {
+      alert('🔒 Acción Bloqueada: Tu rol de usuario no tiene permiso para eliminar órdenes de trabajo (canDeleteRecords).');
+      return;
+    }
     setWorkOrders(prev => prev.filter(o => o.id !== id));
     fetch('/api/work-orders/delete', {
       method: 'POST',
@@ -1219,6 +1325,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     customMessage?: string;
     data?: Record<string, any>;
   }): string => {
+    if (!hasPermission('canSendWhatsApp')) {
+      console.warn('Acción denegada: No tienes permiso para enviar mensajes de WhatsApp (canSendWhatsApp).');
+      return '';
+    }
     // Sanitize phone number: strip non-digits
     let cleanPhone = phone.replace(/\D/g, '');
     if (!cleanPhone.startsWith('503') && cleanPhone.length === 8) {
@@ -1352,6 +1462,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const addUser = (userData: Omit<User, 'id' | 'createdAt'>): User => {
+    if (!hasPermission('canManageMechanics')) {
+      alert('🔒 Acción Bloqueada: Solo el Jefe de Taller o personal autorizado puede registrar mecánicos (canManageMechanics).');
+      throw new Error('Unauthorized: canManageMechanics required');
+    }
     const newUser: User = {
       ...userData,
       id: `usr-${Date.now()}`,
@@ -1369,6 +1483,12 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateUser = (id: string, updates: Partial<User>) => {
+    // If updating own profile (e.g. specialty, name, PIN), allow self-update; role/permission changes require canManageMechanics
+    const isSelfEdit = currentUser?.id === id && !updates.role && !updates.permissions;
+    if (!isSelfEdit && !hasPermission('canManageMechanics')) {
+      alert('🔒 Acción Bloqueada: Solo el Jefe de Taller o administradores pueden modificar usuarios (canManageMechanics).');
+      return;
+    }
     let updatedUser: User | null = null;
     setUsers(prev =>
       prev.map(u => {
@@ -1395,6 +1515,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deleteUser = (id: string) => {
+    if (!hasPermission('canManageMechanics')) {
+      alert('🔒 Acción Bloqueada: Tu rol de usuario no tiene permiso para administrar ni eliminar mecánicos (canManageMechanics).');
+      return;
+    }
     setUsers(prev => prev.filter(u => u.id !== id));
     if (currentUser?.id === id) {
       // If current user is deleted, switch back to Boss or null
@@ -1411,6 +1535,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateUserPermissions = (userId: string, permissions: Partial<MechanicPermissions>) => {
+    if (!hasPermission('canManageMechanics')) {
+      alert('🔒 Acción Bloqueada: Solo el Jefe de Taller o personal autorizado puede modificar permisos (canManageMechanics).');
+      return;
+    }
     let updatedUser: User | null = null;
     setUsers(prev =>
       prev.map(u => {
@@ -1489,14 +1617,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const resetToSampleData = () => {
-    // Keep existing database users intact so user accounts and modifications are preserved forever!
-    setClients(INITIAL_CLIENTS);
-    setParts(INITIAL_PARTS);
-    setAppointments(INITIAL_APPOINTMENTS);
-    setBudgets(INITIAL_BUDGETS);
-    setWorkOrders(INITIAL_WORK_ORDERS);
-    setNotifications(INITIAL_NOTIFICATIONS);
-    triggerCloudSync();
+    resetToCleanData();
   };
 
   const resetToCleanData = async () => {

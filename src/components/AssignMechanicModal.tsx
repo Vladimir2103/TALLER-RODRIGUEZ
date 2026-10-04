@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useWorkshop } from '../context/WorkshopContext';
 import { WorkOrder, User } from '../types';
-import { Wrench, Crown, UserCheck, Bell, CheckCircle2, X, AlertCircle, ArrowRight } from 'lucide-react';
+import { Wrench, Crown, UserCheck, Bell, CheckCircle2, X, AlertCircle, ArrowRight, Lock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface AssignMechanicModalProps {
@@ -15,12 +15,34 @@ export const AssignMechanicModal: React.FC<AssignMechanicModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { users, workOrders, reassignWorkOrder, currentUser } = useWorkshop();
+  const { users, workOrders, reassignWorkOrder, currentUser, hasPermission } = useWorkshop();
 
   const [selectedTechName, setSelectedTechName] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState('');
 
   if (!isOpen || !order) return null;
+
+  if (!hasPermission('canManageMechanics')) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xs">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md p-6 text-center space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-white">Función Restringida</h3>
+          <p className="text-xs text-neutral-400">
+            Solo el Jefe de Taller o administradores autorizados pueden reasignar el técnico responsable de una orden.
+          </p>
+          <button
+            onClick={onClose}
+            className="w-full py-2 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-semibold text-xs cursor-pointer"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Active technicians from registered users
   const activeMechanics = users.filter(u => u.isActive);

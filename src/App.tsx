@@ -21,6 +21,8 @@ import { EditProfileModal } from './components/EditProfileModal';
 import { NotificationsDrawer } from './components/NotificationsDrawer';
 import { ClientTrackingPortal } from './components/ClientTrackingPortal';
 import { PWAInstallButton } from './components/PWAInstallButton';
+import { AccessRestricted } from './components/AccessRestricted';
+import { MyPermissionsModal } from './components/MyPermissionsModal';
 import {
   LayoutDashboard,
   Calendar,
@@ -45,6 +47,7 @@ import {
   ShieldCheck,
   Bell,
   UserCog,
+  Lock,
 } from 'lucide-react';
 import { WORKSHOP_CONFIG } from './data/initialData';
 import { Appointment, Client, Vehicle } from './types';
@@ -131,11 +134,18 @@ function WorkshopApp() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isNotificationsDrawerOpen, setIsNotificationsDrawerOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isMyPermissionsOpen, setIsMyPermissionsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
 
   const isBoss = currentUser?.role === 'boss';
+  const canManageAppointments = hasPermission('canManageAppointments');
+  const canManageWorkOrders = hasPermission('canManageWorkOrders');
+  const canManageBudgets = hasPermission('canManageBudgets');
+  const canManageInventory = hasPermission('canManageInventory');
+  const canManageClients = hasPermission('canManageClients');
   const canManageStaff = hasPermission('canManageMechanics');
+  const canSendWhatsApp = hasPermission('canSendWhatsApp');
 
   // Cross-view creation shortcuts
   const [isCreateAppOpen, setIsCreateAppOpen] = useState(false);
@@ -147,6 +157,10 @@ function WorkshopApp() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const openWhatsApp = (phone: string, clientName: string, template: any, data: any) => {
+    if (!canSendWhatsApp) {
+      alert('🔒 Acción Bloqueada: Tu usuario no tiene asignado el permiso para enviar mensajes de WhatsApp a clientes. Solicita la activación de este permiso al Jefe de Taller.');
+      return;
+    }
     setWaPhone(phone);
     setWaClientName(clientName);
     setWaTemplate(template);
@@ -254,56 +268,66 @@ function WorkshopApp() {
             </button>
             <button
               onClick={() => setActiveTab('appointments')}
-              className={`transition-colors cursor-pointer py-1 ${
+              className={`transition-colors cursor-pointer py-1 flex items-center gap-1.5 ${
                 activeTab === 'appointments'
                   ? 'text-white border-b-2 border-red-500'
-                  : 'text-neutral-400 hover:text-white'
+                  : canManageAppointments ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-400'
               }`}
+              title={canManageAppointments ? 'Citas y Agenda' : 'Acceso restringido (requiere permiso canManageAppointments)'}
             >
-              Citas
+              <span>Citas</span>
+              {!canManageAppointments && <Lock className="w-3 h-3 text-neutral-500" />}
             </button>
             <button
               onClick={() => setActiveTab('work_orders')}
-              className={`transition-colors cursor-pointer py-1 ${
+              className={`transition-colors cursor-pointer py-1 flex items-center gap-1.5 ${
                 activeTab === 'work_orders'
                   ? 'text-white border-b-2 border-red-500'
-                  : 'text-neutral-400 hover:text-white'
+                  : canManageWorkOrders ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-400'
               }`}
+              title={canManageWorkOrders ? 'Órdenes de Trabajo (OT)' : 'Acceso restringido (requiere permiso canManageWorkOrders)'}
             >
-              Órdenes (OT)
+              <span>Órdenes (OT)</span>
+              {!canManageWorkOrders && <Lock className="w-3 h-3 text-neutral-500" />}
             </button>
             <button
               onClick={() => setActiveTab('budgets')}
-              className={`transition-colors cursor-pointer py-1 ${
+              className={`transition-colors cursor-pointer py-1 flex items-center gap-1.5 ${
                 activeTab === 'budgets'
                   ? 'text-white border-b-2 border-red-500'
-                  : 'text-neutral-400 hover:text-white'
+                  : canManageBudgets ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-400'
               }`}
+              title={canManageBudgets ? 'Presupuestos y Cotizaciones' : 'Acceso restringido (requiere permiso canManageBudgets)'}
             >
-              Presupuestos
+              <span>Presupuestos</span>
+              {!canManageBudgets && <Lock className="w-3 h-3 text-neutral-500" />}
             </button>
             <button
               onClick={() => setActiveTab('inventory')}
-              className={`transition-colors cursor-pointer py-1 relative ${
+              className={`transition-colors cursor-pointer py-1 relative flex items-center gap-1.5 ${
                 activeTab === 'inventory'
                   ? 'text-white border-b-2 border-red-500'
-                  : 'text-neutral-400 hover:text-white'
+                  : canManageInventory ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-400'
               }`}
+              title={canManageInventory ? 'Inventario de Repuestos' : 'Acceso restringido (requiere permiso canManageInventory)'}
             >
               <span>Repuestos</span>
-              {lowStockParts.length > 0 && (
+              {!canManageInventory && <Lock className="w-3 h-3 text-neutral-500" />}
+              {canManageInventory && lowStockParts.length > 0 && (
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 ml-1 mb-1.5" />
               )}
             </button>
             <button
               onClick={() => setActiveTab('clients')}
-              className={`transition-colors cursor-pointer py-1 ${
+              className={`transition-colors cursor-pointer py-1 flex items-center gap-1.5 ${
                 activeTab === 'clients'
                   ? 'text-white border-b-2 border-red-500'
-                  : 'text-neutral-400 hover:text-white'
+                  : canManageClients ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-400'
               }`}
+              title={canManageClients ? 'Clientes & Historial' : 'Acceso restringido (requiere permiso canManageClients)'}
             >
-              Clientes & Historial
+              <span>Clientes & Historial</span>
+              {!canManageClients && <Lock className="w-3 h-3 text-neutral-500" />}
             </button>
             {canManageStaff && (
               <button
@@ -352,20 +376,22 @@ function WorkshopApp() {
               )}
             </button>
 
-            {/* Quick WhatsApp launcher */}
-            <button
-              onClick={() => {
-                setWaPhone('');
-                setWaClientName('');
-                setWaTemplate('personalizado');
-                setIsWhatsAppOpen(true);
-              }}
-              className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-              title="Enviar mensaje WhatsApp rápido"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span className="hidden md:inline font-medium">WhatsApp</span>
-            </button>
+            {/* Quick WhatsApp launcher - Guarded by canSendWhatsApp */}
+            {canSendWhatsApp && (
+              <button
+                onClick={() => {
+                  setWaPhone('');
+                  setWaClientName('');
+                  setWaTemplate('personalizado');
+                  setIsWhatsAppOpen(true);
+                }}
+                className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                title="Enviar mensaje WhatsApp rápido al cliente"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span className="hidden md:inline font-medium">WhatsApp</span>
+              </button>
+            )}
 
             {/* User Session Profile & Switcher Pill */}
             {currentUser ? (
@@ -431,6 +457,17 @@ function WorkshopApp() {
                       </div>
 
                       <div className="space-y-1">
+                        <button
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            setIsMyPermissionsOpen(true);
+                          }}
+                          className="w-full px-2.5 py-2 rounded-lg text-neutral-300 hover:text-white hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors text-left"
+                        >
+                          <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Ver mis Permisos Asignados</span>
+                        </button>
+
                         <button
                           onClick={() => {
                             setIsUserMenuOpen(false);
@@ -517,13 +554,13 @@ function WorkshopApp() {
         {isMobileMenuOpen && (
           <div className="lg:hidden bg-neutral-900 border-b border-neutral-800 px-4 py-3 space-y-1 text-xs">
             {[
-              { id: 'dashboard', label: 'Panel de Control', icon: LayoutDashboard },
-              { id: 'appointments', label: 'Citas & Agenda', icon: Calendar },
-              { id: 'work_orders', label: 'Órdenes de Trabajo (OT)', icon: Wrench },
-              { id: 'budgets', label: 'Presupuestos Automáticos', icon: FileText },
-              { id: 'inventory', label: 'Inventario de Repuestos', icon: Package },
-              { id: 'clients', label: 'Clientes & Historial', icon: History },
-              ...(canManageStaff ? [{ id: 'mechanics', label: 'Mecánicos & Permisos', icon: Shield }] : []),
+              { id: 'dashboard', label: 'Panel de Control', icon: LayoutDashboard, permitted: true },
+              { id: 'appointments', label: 'Citas & Agenda', icon: Calendar, permitted: canManageAppointments },
+              { id: 'work_orders', label: 'Órdenes de Trabajo (OT)', icon: Wrench, permitted: canManageWorkOrders },
+              { id: 'budgets', label: 'Presupuestos Automáticos', icon: FileText, permitted: canManageBudgets },
+              { id: 'inventory', label: 'Inventario de Repuestos', icon: Package, permitted: canManageInventory },
+              { id: 'clients', label: 'Clientes & Historial', icon: History, permitted: canManageClients },
+              ...(canManageStaff ? [{ id: 'mechanics', label: 'Mecánicos & Permisos', icon: Shield, permitted: true }] : []),
             ].map(item => {
               const Icon = item.icon;
               return (
@@ -533,14 +570,17 @@ function WorkshopApp() {
                     setActiveTab(item.id as any);
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left font-medium transition-colors cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left font-medium transition-colors cursor-pointer ${
                     activeTab === item.id
                       ? 'bg-red-600 text-white font-semibold'
-                      : 'text-neutral-300 hover:bg-neutral-800'
+                      : item.permitted ? 'text-neutral-300 hover:bg-neutral-800' : 'text-neutral-500 hover:bg-neutral-850'
                   }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span>{item.label}</span>
+                  <div className="flex items-center gap-2.5">
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </div>
+                  {!item.permitted && <Lock className="w-3.5 h-3.5 text-neutral-500" />}
                 </button>
               );
             })}
@@ -564,70 +604,126 @@ function WorkshopApp() {
         )}
       </header>
 
-      {/* Main Viewport Content */}
+      {/* Main Viewport Content with Strict RBAC Permissions */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
         {activeTab === 'dashboard' && (
           <DashboardView
             onNavigate={(tab: any) => setActiveTab(tab)}
             onOpenWhatsApp={openWhatsApp}
             onNewAppointment={() => {
-              setActiveTab('appointments');
-              setIsCreateAppOpen(true);
+              if (canManageAppointments) {
+                setActiveTab('appointments');
+                setIsCreateAppOpen(true);
+              }
             }}
             onNewBudget={() => {
-              setActiveTab('budgets');
-              setIsCreateBudgetOpen(true);
+              if (canManageBudgets) {
+                setActiveTab('budgets');
+                setIsCreateBudgetOpen(true);
+              }
             }}
             onNewWorkOrder={() => {
-              setActiveTab('work_orders');
-              setIsCreateOTOpen(true);
+              if (canManageWorkOrders) {
+                setActiveTab('work_orders');
+                setIsCreateOTOpen(true);
+              }
             }}
           />
         )}
 
         {activeTab === 'appointments' && (
-          <AppointmentsView
-            onOpenWhatsApp={openWhatsApp}
-            onConvertToWorkOrder={handleConvertAppointmentToOT}
-            isCreateModalOpen={isCreateAppOpen}
-            onCloseCreateModal={() => setIsCreateAppOpen(false)}
-          />
+          canManageAppointments ? (
+            <AppointmentsView
+              onOpenWhatsApp={openWhatsApp}
+              onConvertToWorkOrder={handleConvertAppointmentToOT}
+              isCreateModalOpen={isCreateAppOpen}
+              onCloseCreateModal={() => setIsCreateAppOpen(false)}
+            />
+          ) : (
+            <AccessRestricted
+              sectionName="Citas & Agenda"
+              requiredPermission="canManageAppointments"
+              onGoBack={() => setActiveTab('dashboard')}
+            />
+          )
         )}
 
         {activeTab === 'work_orders' && (
-          <WorkOrdersView
-            onOpenWhatsApp={openWhatsApp}
-            isCreateModalOpen={isCreateOTOpen}
-            onCloseCreateModal={() => {
-              setIsCreateOTOpen(false);
-              setPrefilledAppointmentForOT(null);
-            }}
-            prefilledAppointment={prefilledAppointmentForOT}
-          />
+          canManageWorkOrders ? (
+            <WorkOrdersView
+              onOpenWhatsApp={openWhatsApp}
+              isCreateModalOpen={isCreateOTOpen}
+              onCloseCreateModal={() => {
+                setIsCreateOTOpen(false);
+                setPrefilledAppointmentForOT(null);
+              }}
+              prefilledAppointment={prefilledAppointmentForOT}
+            />
+          ) : (
+            <AccessRestricted
+              sectionName="Órdenes de Trabajo (OT)"
+              requiredPermission="canManageWorkOrders"
+              onGoBack={() => setActiveTab('dashboard')}
+            />
+          )
         )}
 
         {activeTab === 'budgets' && (
-          <BudgetsView
-            onOpenWhatsApp={openWhatsApp}
-            onNavigateToOT={() => setActiveTab('work_orders')}
-            isCreateModalOpen={isCreateBudgetOpen}
-            onCloseCreateModal={() => setIsCreateBudgetOpen(false)}
-          />
+          canManageBudgets ? (
+            <BudgetsView
+              onOpenWhatsApp={openWhatsApp}
+              onNavigateToOT={() => setActiveTab('work_orders')}
+              isCreateModalOpen={isCreateBudgetOpen}
+              onCloseCreateModal={() => setIsCreateBudgetOpen(false)}
+            />
+          ) : (
+            <AccessRestricted
+              sectionName="Presupuestos & Cotizaciones"
+              requiredPermission="canManageBudgets"
+              onGoBack={() => setActiveTab('dashboard')}
+            />
+          )
         )}
 
-        {activeTab === 'inventory' && <InventoryView />}
+        {activeTab === 'inventory' && (
+          canManageInventory ? (
+            <InventoryView />
+          ) : (
+            <AccessRestricted
+              sectionName="Inventario de Repuestos"
+              requiredPermission="canManageInventory"
+              onGoBack={() => setActiveTab('dashboard')}
+            />
+          )
+        )}
 
         {activeTab === 'clients' && (
-          <ClientsHistoryView
-            onOpenWhatsApp={openWhatsApp}
-            onNewWorkOrderForVehicle={handleNewWorkOrderForVehicle}
-          />
+          canManageClients ? (
+            <ClientsHistoryView
+              onOpenWhatsApp={openWhatsApp}
+              onNewWorkOrderForVehicle={handleNewWorkOrderForVehicle}
+            />
+          ) : (
+            <AccessRestricted
+              sectionName="Clientes & Historial"
+              requiredPermission="canManageClients"
+              onGoBack={() => setActiveTab('dashboard')}
+            />
+          )
         )}
 
-        {activeTab === 'mechanics' && canManageStaff && (
-          <MechanicsManagementView
-            onNavigateToOTs={() => setActiveTab('work_orders')}
-          />
+        {activeTab === 'mechanics' && (
+          canManageStaff ? (
+            <MechanicsManagementView
+              onNavigateToOTs={() => setActiveTab('work_orders')}
+            />
+          ) : (
+            <AccessRestricted
+              sectionName="Mecánicos & Permisos del Taller"
+              requiredPermission="canManageMechanics"
+              onGoBack={() => setActiveTab('dashboard')}
+            />
+          )
         )}
       </main>
 
@@ -659,43 +755,55 @@ function WorkshopApp() {
 
         <button
           onClick={() => setActiveTab('appointments')}
-          className={`flex flex-col items-center justify-center h-full cursor-pointer ${
-            activeTab === 'appointments' ? 'text-red-500' : 'text-neutral-400 hover:text-white'
+          className={`flex flex-col items-center justify-center h-full cursor-pointer relative ${
+            activeTab === 'appointments'
+              ? 'text-red-500'
+              : canManageAppointments ? 'text-neutral-400 hover:text-white' : 'text-neutral-600'
           }`}
         >
           <Calendar className="w-5 h-5" />
+          {!canManageAppointments && <Lock className="w-2.5 h-2.5 absolute top-2 right-4 text-neutral-500" />}
           <span className="text-[10px] font-medium tracking-tight mt-1">Citas</span>
         </button>
 
         <button
           onClick={() => setActiveTab('work_orders')}
-          className={`flex flex-col items-center justify-center h-full cursor-pointer ${
-            activeTab === 'work_orders' ? 'text-red-500' : 'text-neutral-400 hover:text-white'
+          className={`flex flex-col items-center justify-center h-full cursor-pointer relative ${
+            activeTab === 'work_orders'
+              ? 'text-red-500'
+              : canManageWorkOrders ? 'text-neutral-400 hover:text-white' : 'text-neutral-600'
           }`}
         >
           <Wrench className="w-5 h-5" />
+          {!canManageWorkOrders && <Lock className="w-2.5 h-2.5 absolute top-2 right-4 text-neutral-500" />}
           <span className="text-[10px] font-medium tracking-tight mt-1">Órdenes</span>
         </button>
 
         <button
           onClick={() => setActiveTab('budgets')}
-          className={`flex flex-col items-center justify-center h-full cursor-pointer ${
-            activeTab === 'budgets' ? 'text-red-500' : 'text-neutral-400 hover:text-white'
+          className={`flex flex-col items-center justify-center h-full cursor-pointer relative ${
+            activeTab === 'budgets'
+              ? 'text-red-500'
+              : canManageBudgets ? 'text-neutral-400 hover:text-white' : 'text-neutral-600'
           }`}
         >
           <FileText className="w-5 h-5" />
+          {!canManageBudgets && <Lock className="w-2.5 h-2.5 absolute top-2 right-4 text-neutral-500" />}
           <span className="text-[10px] font-medium tracking-tight mt-1">Cotizar</span>
         </button>
 
         <button
           onClick={() => setActiveTab('inventory')}
           className={`flex flex-col items-center justify-center h-full cursor-pointer relative ${
-            activeTab === 'inventory' ? 'text-red-500' : 'text-neutral-400 hover:text-white'
+            activeTab === 'inventory'
+              ? 'text-red-500'
+              : canManageInventory ? 'text-neutral-400 hover:text-white' : 'text-neutral-600'
           }`}
         >
           <Package className="w-5 h-5" />
+          {!canManageInventory && <Lock className="w-2.5 h-2.5 absolute top-2 right-4 text-neutral-500" />}
           <span className="text-[10px] font-medium tracking-tight mt-1">Almacén</span>
-          {lowStockParts.length > 0 && (
+          {canManageInventory && lowStockParts.length > 0 && (
             <span className="absolute top-2.5 right-4 w-2 h-2 rounded-full bg-amber-400" />
           )}
         </button>
@@ -791,6 +899,13 @@ function WorkshopApp() {
       <EditProfileModal
         isOpen={isEditProfileOpen}
         onClose={() => setIsEditProfileOpen(false)}
+      />
+
+      {/* My Active Roles & Permissions Modal */}
+      <MyPermissionsModal
+        isOpen={isMyPermissionsOpen}
+        onClose={() => setIsMyPermissionsOpen(false)}
+        onOpenManageStaff={() => setActiveTab('mechanics')}
       />
     </div>
   );

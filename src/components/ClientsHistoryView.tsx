@@ -46,6 +46,8 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
 
   const canManageClients = hasPermission('canManageClients');
   const canDelete = hasPermission('canDeleteRecords');
+  const canSendWhatsApp = hasPermission('canSendWhatsApp');
+  const canManageWorkOrders = hasPermission('canManageWorkOrders');
 
   const [search, setSearch] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>(clients[0]?.id || '');
@@ -366,20 +368,22 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
 
                 {/* Actions: WhatsApp, Edit, Delete */}
                 <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    onClick={() =>
-                      onOpenWhatsApp(selectedClient.phone, selectedClient.name, 'personalizado', {
-                        vehicle: selectedClient.vehicles[0]
-                          ? `${selectedClient.vehicles[0].brand} ${selectedClient.vehicles[0].model}`
-                          : 'Vehículo',
-                        plate: selectedClient.vehicles[0]?.plate || '',
-                      })
-                    }
-                    className="px-3 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>WhatsApp</span>
-                  </button>
+                  {canSendWhatsApp && (
+                    <button
+                      onClick={() =>
+                        onOpenWhatsApp(selectedClient.phone, selectedClient.name, 'personalizado', {
+                          vehicle: selectedClient.vehicles[0]
+                            ? `${selectedClient.vehicles[0].brand} ${selectedClient.vehicles[0].model}`
+                            : 'Vehículo',
+                          plate: selectedClient.vehicles[0]?.plate || '',
+                        })
+                      }
+                      className="px-3 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>WhatsApp</span>
+                    </button>
+                  )}
 
                   {canManageClients && (
                     <button
@@ -478,20 +482,24 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
                       </div>
 
                       <div className="pt-2 border-t border-neutral-900 flex items-center justify-between gap-2">
-                        <button
-                          onClick={() =>
-                            onOpenWhatsApp(selectedClient.phone, selectedClient.name, 'mantenimiento', {
-                              vehicle: `${v.brand} ${v.model}`,
-                              plate: v.plate,
-                            })
-                          }
-                          className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
-                        >
-                          <MessageSquare className="w-3 h-3" />
-                          <span>Recordar Mantenimiento</span>
-                        </button>
+                        {canSendWhatsApp ? (
+                          <button
+                            onClick={() =>
+                              onOpenWhatsApp(selectedClient.phone, selectedClient.name, 'mantenimiento', {
+                                vehicle: `${v.brand} ${v.model}`,
+                                plate: v.plate,
+                              })
+                            }
+                            className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            <span>Recordar Mantenimiento</span>
+                          </button>
+                        ) : (
+                          <span className="text-[11px] text-neutral-600">WhatsApp restringido</span>
+                        )}
 
-                        {onNewWorkOrderForVehicle && (
+                        {canManageWorkOrders && onNewWorkOrderForVehicle && (
                           <button
                             onClick={() => onNewWorkOrderForVehicle(selectedClient, v)}
                             className="text-[11px] text-white hover:text-red-400 flex items-center gap-1 cursor-pointer font-medium"

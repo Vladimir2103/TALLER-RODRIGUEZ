@@ -47,6 +47,9 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
   } = useWorkshop();
 
   const canManageAppointments = hasPermission('canManageAppointments');
+  const canDelete = hasPermission('canDeleteRecords');
+  const canSendWhatsApp = hasPermission('canSendWhatsApp');
+  const canManageWorkOrders = hasPermission('canManageWorkOrders');
   const techList = activeTechnicians.length > 0 ? activeTechnicians : WORKSHOP_CONFIG.technicians;
 
   const [search, setSearch] = useState('');
@@ -214,13 +217,15 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={openNewModal}
-          className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Agendar Nueva Cita</span>
-        </button>
+        {canManageAppointments && (
+          <button
+            onClick={openNewModal}
+            className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950 self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Agendar Nueva Cita</span>
+          </button>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -354,54 +359,62 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
                   </button>
 
                   {/* WhatsApp confirmation */}
-                  <button
-                    onClick={() =>
-                      onOpenWhatsApp(app.clientPhone, app.clientName, 'cita', {
-                        date: app.scheduledDate,
-                        time: app.scheduledTime,
-                        vehicle: app.vehicleModel,
-                        plate: app.vehiclePlate,
-                        service: app.serviceRequested,
-                      })
-                    }
-                    className="px-3 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                    title="Enviar confirmación de cita a WhatsApp"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>WhatsApp</span>
-                  </button>
+                  {canSendWhatsApp && (
+                    <button
+                      onClick={() =>
+                        onOpenWhatsApp(app.clientPhone, app.clientName, 'cita', {
+                          date: app.scheduledDate,
+                          time: app.scheduledTime,
+                          vehicle: app.vehicleModel,
+                          plate: app.vehiclePlate,
+                          service: app.serviceRequested,
+                        })
+                      }
+                      className="px-3 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                      title="Enviar confirmación de cita a WhatsApp"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>WhatsApp</span>
+                    </button>
+                  )}
 
                   {/* Convert to Work Order button */}
-                  <button
-                    onClick={() => onConvertToWorkOrder(app)}
-                    className="px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950"
-                    title="Iniciar Orden de Trabajo para este vehículo"
-                  >
-                    <Wrench className="w-3.5 h-3.5" />
-                    <span>Crear OT</span>
-                  </button>
+                  {canManageWorkOrders && (
+                    <button
+                      onClick={() => onConvertToWorkOrder(app)}
+                      className="px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950"
+                      title="Iniciar Orden de Trabajo para este vehículo"
+                    >
+                      <Wrench className="w-3.5 h-3.5" />
+                      <span>Crear OT</span>
+                    </button>
+                  )}
 
                   {/* Edit */}
-                  <button
-                    onClick={() => openEditModal(app)}
-                    className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer"
-                    title="Editar cita"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
+                  {canManageAppointments && (
+                    <button
+                      onClick={() => openEditModal(app)}
+                      className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer"
+                      title="Editar cita"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
 
                   {/* Delete */}
-                  <button
-                    onClick={() => {
-                      if (confirm(`¿Eliminar la cita de ${app.clientName}?`)) {
-                        deleteAppointment(app.id);
-                      }
-                    }}
-                    className="p-2 text-neutral-400 hover:text-red-400 hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer"
-                    title="Eliminar cita"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {canDelete && (
+                    <button
+                      onClick={() => {
+                        if (confirm(`¿Eliminar la cita de ${app.clientName}?`)) {
+                          deleteAppointment(app.id);
+                        }
+                      }}
+                      className="p-2 text-neutral-400 hover:text-red-400 hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer"
+                      title="Eliminar cita"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

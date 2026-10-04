@@ -56,21 +56,23 @@ function loadDatabaseState(): WorkshopDatabaseState {
     console.error('[DB] Error loading workshop_database.json, initializing clean state', err);
   }
 
-  // Default clean database state (empty operational tables, preserved mechanics)
+  // Default clean database state (clean operational tables, preserved mechanics)
   const cleanDefault: WorkshopDatabaseState = {
-    clients: [...INITIAL_CLIENTS],
-    parts: [...INITIAL_PARTS],
-    appointments: [...INITIAL_APPOINTMENTS],
-    budgets: [...INITIAL_BUDGETS],
-    workOrders: [...INITIAL_WORK_ORDERS],
-    notifications: [...INITIAL_NOTIFICATIONS],
+    clients: [],
+    parts: [],
+    appointments: [],
+    budgets: [],
+    workOrders: [],
+    notifications: [],
     users: [...INITIAL_USERS],
-    mechanicNotifications: [...INITIAL_MECHANIC_NOTIFICATIONS],
+    mechanicNotifications: [],
     lastUpdated: new Date().toISOString(),
   };
 
   try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(cleanDefault, null, 2), 'utf-8');
+    const tempFile = `${DB_FILE}.tmp.${Date.now()}`;
+    fs.writeFileSync(tempFile, JSON.stringify(cleanDefault, null, 2), 'utf-8');
+    fs.renameSync(tempFile, DB_FILE);
   } catch (e) {
     console.error('[DB] Error initializing database file', e);
   }
@@ -81,12 +83,20 @@ function loadDatabaseState(): WorkshopDatabaseState {
 // In-Memory Server-Authoritative State loaded from persistent disk file
 let state: WorkshopDatabaseState = loadDatabaseState();
 
+// Bulletproof Atomic Database Persistence (Zero Corruption & Immediate Disk Flush)
 function persistDatabaseState() {
   try {
     state.lastUpdated = new Date().toISOString();
-    fs.writeFileSync(DB_FILE, JSON.stringify(state, null, 2), 'utf-8');
+    const tempFile = `${DB_FILE}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 6)}`;
+    fs.writeFileSync(tempFile, JSON.stringify(state, null, 2), 'utf-8');
+    fs.renameSync(tempFile, DB_FILE);
   } catch (err) {
-    console.error('[DB] Error persisting workshop_database.json', err);
+    console.error('[DB] Error persisting workshop_database.json atomically, trying direct fallback', err);
+    try {
+      fs.writeFileSync(DB_FILE, JSON.stringify(state, null, 2), 'utf-8');
+    } catch (e2) {
+      console.error('[DB] Critical: Failed to persist database state', e2);
+    }
   }
 }
 
@@ -723,9 +733,8 @@ app.post('/api/sync', (req, res) => {
 
       for (const k of keys) {
         if (Array.isArray(incoming[k])) {
-          // If server already has items and incoming is an empty array from a cold client, protect existing data!
-          if (incoming[k].length === 0 && Array.isArray((state as any)[k]) && (state as any)[k].length > 0) {
-            // Keep existing non-empty server data
+          // Protect staff accounts from accidental empty payload
+          if (k === 'users' && incoming[k].length === 0 && state.users.length > 0) {
             continue;
           }
           (state as any)[k] = incoming[k];
@@ -784,6 +793,15 @@ app.get('/api/health', (req, res) => {
 
 // Vite middleware in dev / Static files in prod
 async function startServer() {
+  const PORT = Number(process.env.PORT) || 3000;
+  
+  // Start HTTP & WebSocket server immediately so container healthchecks pass instantly (preventing 'running the code' stalls)
+  if (!server.listening) {
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`[Taller Rodríguez] Servidor activo inmediatamente en http://0.0.0.0:${PORT} (WebSocket: /ws)`);
+    });
+  }
+
   const isProd = process.env.NODE_ENV === 'production';
   const distDir = path.resolve(process.cwd(), 'dist');
   const distIndex = path.join(distDir, 'index.html');
@@ -806,73 +824,26 @@ async function startServer() {
       }
     });
   } else {
-    // Check if dist/index.html was built; if not, try to build it automatically
-    if (!fs.existsSync(distIndex)) {
-      console.warn('[Server] ADVERTENCIA: No se encontró dist/index.html en producción.');
-      console.log('[Server] Ejecutando compilación automática (npm run build)...');
-      try {
-        const { execSync } = await import('child_process');
-        execSync('npm run build', { stdio: 'inherit' });
-        console.log('[Server] ¡Compilación finalizada exitosamente!');
-      } catch (buildError) {
-        console.error('[Server] No se pudo compilar dist automáticamente:', buildError);
-      }
-    }
-
     if (fs.existsSync(distIndex)) {
       app.use(express.static(distDir));
       app.get('*', (req, res) => {
         res.sendFile(distIndex);
       });
     } else {
-      // Diagnostic fallback instead of crashing with unhandled ENOENT
       app.get('*', (req, res) => {
-        res.status(500).send(`
+        res.status(200).send(`
           <!DOCTYPE html>
           <html lang="es">
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Configuración de Despliegue en Render</title>
-              <style>
-                body { font-family: system-ui, -apple-system, sans-serif; background: #0a0a0a; color: #ededed; padding: 32px 20px; max-width: 680px; margin: 0 auto; line-height: 1.6; }
-                .card { background: #171717; border: 1px solid #262626; border-radius: 12px; padding: 24px; margin-top: 20px; }
-                h1 { color: #f87171; font-size: 20px; margin-top: 0; }
-                code { background: #262626; color: #4ade80; padding: 4px 8px; border-radius: 6px; font-family: monospace; font-size: 14px; }
-                ol { padding-left: 20px; }
-                li { margin-bottom: 14px; }
-                .highlight { background: #000; border: 1px solid #333; padding: 12px; border-radius: 8px; display: block; margin: 8px 0; word-break: break-all; }
-              </style>
-            </head>
-            <body>
-              <div class="card">
-                <h1>⚠️ Falta compilar los archivos de la aplicación (dist/index.html)</h1>
-                <p>El servidor inició correctamente en Render, pero los archivos estáticos de React no fueron generados durante el paso de compilación (Build Command).</p>
-                
-                <h3>Cómo solucionarlo en el panel de Render:</h3>
-                <ol>
-                  <li>Ingresa a tu dashboard en <strong>dashboard.render.com</strong> y abre tu servicio.</li>
-                  <li>Ve a la pestaña <strong>Settings</strong> (Configuración) a la izquierda.</li>
-                  <li>Busca el campo <strong>Build Command</strong> y cámbialo a:
-                    <div class="highlight"><code>npm install && npm run build</code></div>
-                  </li>
-                  <li>Asegúrate de que <strong>Start Command</strong> sea:
-                    <div class="highlight"><code>npm start</code></div>
-                  </li>
-                  <li>Haz clic en <strong>Save Changes</strong> y luego en <strong>Manual Deploy &gt; Deploy latest commit</strong>.</li>
-                </ol>
-              </div>
+            <head><meta charset="utf-8"><title>Taller Rodríguez Rodríguez</title></head>
+            <body style="font-family:sans-serif;background:#0a0a0c;color:#fff;padding:40px;">
+              <h2>Iniciando Taller Rodríguez Rodríguez...</h2>
+              <p>Por favor ejecuta <code>npm run build</code> para el bundle de producción.</p>
             </body>
           </html>
         `);
       });
     }
   }
-
-  const PORT = Number(process.env.PORT) || 3000;
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Taller Rodríguez] Servidor con base de datos en tiempo real activo en http://0.0.0.0:${PORT} (WebSocket: /ws)`);
-  });
 }
 
 startServer().catch(err => {

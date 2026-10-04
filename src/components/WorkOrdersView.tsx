@@ -70,6 +70,8 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
 
   const canManageWorkOrders = hasPermission('canManageWorkOrders');
   const canDelete = hasPermission('canDeleteRecords');
+  const canSendWhatsApp = hasPermission('canSendWhatsApp');
+  const canManageStaff = hasPermission('canManageMechanics');
   const techList = activeTechnicians.length > 0 ? activeTechnicians : WORKSHOP_CONFIG.technicians;
 
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
@@ -264,16 +266,18 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
             </button>
           </div>
 
-          <button
-            onClick={() => {
-              setPartsUsed([]);
-              setIsModalOpen(true);
-            }}
-            className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nueva Orden de Trabajo</span>
-          </button>
+          {canManageWorkOrders && (
+            <button
+              onClick={() => {
+                setPartsUsed([]);
+                setIsModalOpen(true);
+              }}
+              className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nueva Orden de Trabajo</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -373,30 +377,41 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
 
                         {/* Technician & Amount */}
                         <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-1.5 border-t border-neutral-800/60">
-                          <button
-                            type="button"
-                            onClick={() => setOrderForAssign(order)}
-                            className="flex items-center gap-1.5 min-w-0 max-w-[145px] hover:text-white group/tech cursor-pointer text-left"
-                            title="Haz clic para reasignar mecánico (notificación en tiempo real)"
-                          >
-                            <UserCheck className="w-3.5 h-3.5 text-blue-400 shrink-0 group-hover/tech:text-red-400 transition-colors" />
-                            <span className="truncate font-medium text-neutral-300 group-hover/tech:underline">
-                              {order.assignedTechnician.split(' ')[0]} {order.assignedTechnician.split(' ')[1] || ''}
-                            </span>
-                          </button>
+                          {canManageStaff ? (
+                            <button
+                              type="button"
+                              onClick={() => setOrderForAssign(order)}
+                              className="flex items-center gap-1.5 min-w-0 max-w-[145px] hover:text-white group/tech cursor-pointer text-left"
+                              title="Haz clic para reasignar mecánico (notificación en tiempo real)"
+                            >
+                              <UserCheck className="w-3.5 h-3.5 text-blue-400 shrink-0 group-hover/tech:text-red-400 transition-colors" />
+                              <span className="truncate font-medium text-neutral-300 group-hover/tech:underline">
+                                {order.assignedTechnician.split(' ')[0]} {order.assignedTechnician.split(' ')[1] || ''}
+                              </span>
+                            </button>
+                          ) : (
+                            <div className="flex items-center gap-1.5 min-w-0 max-w-[145px] text-left">
+                              <UserCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                              <span className="truncate font-medium text-neutral-300">
+                                {order.assignedTechnician.split(' ')[0]} {order.assignedTechnician.split(' ')[1] || ''}
+                              </span>
+                            </div>
+                          )}
 
                           <div className="flex items-center gap-1.5 shrink-0">
                             <span className="font-mono font-bold text-emerald-400 tabular-nums">
                               {formatCurrency(order.total)}
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => setOrderForAssign(order)}
-                              className="px-1.5 py-0.5 rounded bg-neutral-950 hover:bg-neutral-800 text-[10px] text-red-400 hover:text-red-300 border border-neutral-800 cursor-pointer font-medium"
-                              title="Asignar mecánico a esta orden"
-                            >
-                              Asignar
-                            </button>
+                            {canManageStaff && (
+                              <button
+                                type="button"
+                                onClick={() => setOrderForAssign(order)}
+                                className="px-1.5 py-0.5 rounded bg-neutral-950 hover:bg-neutral-800 text-[10px] text-red-400 hover:text-red-300 border border-neutral-800 cursor-pointer font-medium"
+                                title="Asignar mecánico a esta orden"
+                              >
+                                Asignar
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -410,34 +425,40 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                             <Eye className="w-3.5 h-3.5" />
                           </button>
 
-                          <button
-                            onClick={() =>
-                              onOpenWhatsApp(
-                                order.clientPhone,
-                                order.clientName,
-                                order.stage === 'listo_entrega' ? 'ot_listo' : 'ot_inicio',
-                                {
-                                  vehicle: `${order.vehicleBrand} ${order.vehicleModel}`,
-                                  plate: order.vehiclePlate,
-                                  otNumber: order.otNumber,
-                                  technician: order.assignedTechnician,
-                                  estimatedDate: order.estimatedCompletionDate,
-                                  balanceDue: order.total - order.amountPaid,
-                                }
-                              )
-                            }
-                            className="px-2 py-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded transition-colors flex items-center gap-1 cursor-pointer"
-                            title="Notificar por WhatsApp"
-                          >
-                            <MessageSquare className="w-3 h-3" />
-                            <span>WhatsApp</span>
-                          </button>
+                          {canSendWhatsApp && (
+                            <button
+                              onClick={() =>
+                                onOpenWhatsApp(
+                                  order.clientPhone,
+                                  order.clientName,
+                                  order.stage === 'listo_entrega' ? 'ot_listo' : 'ot_inicio',
+                                  {
+                                    vehicle: `${order.vehicleBrand} ${order.vehicleModel}`,
+                                    plate: order.vehiclePlate,
+                                    otNumber: order.otNumber,
+                                    technician: order.assignedTechnician,
+                                    estimatedDate: order.estimatedCompletionDate,
+                                    balanceDue: order.total - order.amountPaid,
+                                  }
+                                )
+                              }
+                              className="px-2 py-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Notificar por WhatsApp"
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              <span>WhatsApp</span>
+                            </button>
+                          )}
 
                           {/* Advance stage dropdown */}
                           <select
                             value={order.stage}
+                            disabled={!canManageWorkOrders}
                             onChange={e => updateWorkOrderStage(order.id, e.target.value as WorkOrderStage)}
-                            className="text-[10px] px-1.5 py-1 bg-neutral-950 border border-neutral-800 rounded text-neutral-300 focus:outline-none cursor-pointer"
+                            className={`text-[10px] px-1.5 py-1 bg-neutral-950 border border-neutral-800 rounded text-neutral-300 focus:outline-none ${
+                              canManageWorkOrders ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'
+                            }`}
+                            title={canManageWorkOrders ? 'Cambiar etapa' : 'Permiso canManageWorkOrders requerido'}
                           >
                             {STAGES.map(s => (
                               <option key={s.id} value={s.id}>
@@ -502,8 +523,12 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                       <td className="py-3.5 px-4">
                         <select
                           value={order.stage}
+                          disabled={!canManageWorkOrders}
                           onChange={e => updateWorkOrderStage(order.id, e.target.value as WorkOrderStage)}
-                          className="px-2 py-1 bg-neutral-950 border border-neutral-800 rounded text-xs text-neutral-200 focus:outline-none cursor-pointer"
+                          className={`px-2 py-1 bg-neutral-950 border border-neutral-800 rounded text-xs text-neutral-200 focus:outline-none ${
+                            canManageWorkOrders ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'
+                          }`}
+                          title={canManageWorkOrders ? 'Cambiar etapa' : 'Permiso canManageWorkOrders requerido'}
                         >
                           {STAGES.map(s => (
                             <option key={s.id} value={s.id}>
@@ -519,14 +544,16 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                             <UserCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                             <span className="truncate font-medium">{order.assignedTechnician}</span>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setOrderForAssign(order)}
-                            className="px-2 py-0.5 rounded bg-neutral-950 hover:bg-neutral-800 text-[10px] text-red-400 hover:text-red-300 border border-neutral-800 cursor-pointer font-medium shrink-0 transition-colors"
-                            title="Reasignar mecánico responsable"
-                          >
-                            Reasignar
-                          </button>
+                          {canManageStaff && (
+                            <button
+                              type="button"
+                              onClick={() => setOrderForAssign(order)}
+                              className="px-2 py-0.5 rounded bg-neutral-950 hover:bg-neutral-800 text-[10px] text-red-400 hover:text-red-300 border border-neutral-800 cursor-pointer font-medium shrink-0 transition-colors"
+                              title="Reasignar mecánico responsable"
+                            >
+                              Reasignar
+                            </button>
+                          )}
                         </div>
                       </td>
 
@@ -566,37 +593,41 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() =>
-                              onOpenWhatsApp(
-                                order.clientPhone,
-                                order.clientName,
-                                order.stage === 'listo_entrega' ? 'ot_listo' : 'ot_inicio',
-                                {
-                                  vehicle: `${order.vehicleBrand} ${order.vehicleModel}`,
-                                  plate: order.vehiclePlate,
-                                  otNumber: order.otNumber,
-                                  technician: order.assignedTechnician,
-                                  balanceDue: order.total - order.amountPaid,
-                                }
-                              )
-                            }
-                            className="p-1.5 text-emerald-400 hover:bg-emerald-500/20 rounded transition-colors cursor-pointer"
-                            title="WhatsApp"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm(`¿Eliminar orden ${order.otNumber}?`)) {
-                                deleteWorkOrder(order.id);
+                          {canSendWhatsApp && (
+                            <button
+                              onClick={() =>
+                                onOpenWhatsApp(
+                                  order.clientPhone,
+                                  order.clientName,
+                                  order.stage === 'listo_entrega' ? 'ot_listo' : 'ot_inicio',
+                                  {
+                                    vehicle: `${order.vehicleBrand} ${order.vehicleModel}`,
+                                    plate: order.vehiclePlate,
+                                    otNumber: order.otNumber,
+                                    technician: order.assignedTechnician,
+                                    balanceDue: order.total - order.amountPaid,
+                                  }
+                                )
                               }
-                            }}
-                            className="p-1.5 text-neutral-500 hover:text-red-400 rounded cursor-pointer"
-                            title="Eliminar"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                              className="p-1.5 text-emerald-400 hover:bg-emerald-500/20 rounded transition-colors cursor-pointer"
+                              title="WhatsApp"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() => {
+                                if (confirm(`¿Eliminar orden ${order.otNumber}?`)) {
+                                  deleteWorkOrder(order.id);
+                                }
+                              }}
+                              className="p-1.5 text-neutral-500 hover:text-red-400 rounded cursor-pointer"
+                              title="Eliminar orden"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

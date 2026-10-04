@@ -45,6 +45,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   } = useWorkshop();
 
   const canViewFinancials = hasPermission('canViewFinancialReports');
+  const canManageWorkOrders = hasPermission('canManageWorkOrders');
+  const canManageBudgets = hasPermission('canManageBudgets');
+  const canManageAppointments = hasPermission('canManageAppointments');
+  const canManageInventory = hasPermission('canManageInventory');
+  const canSendWhatsApp = hasPermission('canSendWhatsApp');
 
   // Metrics calculation
   const totalRevenue = workOrders.reduce((sum, o) => sum + o.total, 0);
@@ -124,27 +129,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Quick Shortcut Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={onNewWorkOrder}
-            className="px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="whitespace-nowrap">Nueva Orden (OT)</span>
-          </button>
-          <button
-            onClick={onNewBudget}
-            className="px-3 py-1.5 text-xs font-semibold text-neutral-200 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="whitespace-nowrap">Nuevo Presupuesto</span>
-          </button>
-          <button
-            onClick={onNewAppointment}
-            className="px-3 py-1.5 text-xs font-semibold text-neutral-200 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span className="whitespace-nowrap">Agendar Cita</span>
-          </button>
+          {canManageWorkOrders && (
+            <button
+              onClick={onNewWorkOrder}
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="whitespace-nowrap">Nueva Orden (OT)</span>
+            </button>
+          )}
+          {canManageBudgets && (
+            <button
+              onClick={onNewBudget}
+              className="px-3 py-1.5 text-xs font-semibold text-neutral-200 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="whitespace-nowrap">Nuevo Presupuesto</span>
+            </button>
+          )}
+          {canManageAppointments && (
+            <button
+              onClick={onNewAppointment}
+              className="px-3 py-1.5 text-xs font-semibold text-neutral-200 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span className="whitespace-nowrap">Agendar Cita</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -222,13 +233,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {lowStockParts.length}{' '}
               <span className="text-xs font-normal text-neutral-400">ítems bajo mínimo</span>
             </div>
-            <button
-              onClick={() => onNavigate('inventory')}
-              className="text-[11px] text-amber-400 hover:text-amber-300 font-medium mt-1 cursor-pointer flex items-center gap-0.5"
-            >
-              <span>Ver catálogo a reabastecer</span>
-              <ChevronRight className="w-3 h-3" />
-            </button>
+            {canManageInventory ? (
+              <button
+                onClick={() => onNavigate('inventory')}
+                className="text-[11px] text-amber-400 hover:text-amber-300 font-medium mt-1 cursor-pointer flex items-center gap-0.5"
+              >
+                <span>Ver catálogo a reabastecer</span>
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            ) : (
+              <span className="text-[11px] text-neutral-500 font-medium mt-1 inline-block">
+                Almacén gestionado por personal autorizado
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -405,9 +422,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="mt-5 pt-4 border-t border-neutral-800 flex items-center justify-between text-xs text-neutral-400">
-            <span>Ticket Promedio por OT:</span>
+            <span>{canViewFinancials ? 'Ticket Promedio por OT:' : 'Volumen Operativo:'}</span>
             <span className="font-mono text-white font-semibold text-sm tabular-nums">
-              {formatCurrency(totalRevenue / Math.max(1, workOrders.length))}
+              {canViewFinancials
+                ? formatCurrency(totalRevenue / Math.max(1, workOrders.length))
+                : `${activeOrders.length} activas / ${workOrders.length} OTs`}
             </span>
           </div>
         </div>
@@ -472,32 +491,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
 
                     {/* WhatsApp Action Button */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onOpenWhatsApp(
-                          order.clientPhone,
-                          order.clientName,
-                          order.stage === 'listo_entrega' ? 'ot_listo' : 'ot_inicio',
-                          {
-                            vehicle: `${order.vehicleBrand} ${order.vehicleModel}`,
-                            plate: order.vehiclePlate,
-                            otNumber: order.otNumber,
-                            technician: order.assignedTechnician,
-                            estimatedDate: order.estimatedCompletionDate,
-                            balanceDue: order.total - order.amountPaid,
-                          }
-                        )
-                      }
-                      className="px-2.5 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                      title="Enviar actualización por WhatsApp"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">WhatsApp</span>
-                    </button>
+                    {canSendWhatsApp && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpenWhatsApp(
+                            order.clientPhone,
+                            order.clientName,
+                            order.stage === 'listo_entrega' ? 'ot_listo' : 'ot_inicio',
+                            {
+                              vehicle: `${order.vehicleBrand} ${order.vehicleModel}`,
+                              plate: order.vehiclePlate,
+                              otNumber: order.otNumber,
+                              technician: order.assignedTechnician,
+                              estimatedDate: order.estimatedCompletionDate,
+                              balanceDue: order.total - order.amountPaid,
+                            }
+                          )
+                        }
+                        className="px-2.5 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Enviar actualización por WhatsApp"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">WhatsApp</span>
+                      </button>
+                    )}
 
                     {/* Quick stage advance */}
-                    {order.stage !== 'listo_entrega' && order.stage !== 'entregado' && (
+                    {canManageWorkOrders && order.stage !== 'listo_entrega' && order.stage !== 'entregado' && (
                       <button
                         onClick={() => {
                           const stages: WorkOrderStage[] = [
@@ -520,7 +541,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </button>
                     )}
 
-                    {order.stage === 'listo_entrega' && (
+                    {canManageWorkOrders && order.stage === 'listo_entrega' && (
                       <button
                         onClick={() => updateWorkOrderStage(order.id, 'entregado')}
                         className="px-2.5 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"

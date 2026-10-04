@@ -29,7 +29,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onClose,
   isMandatory = false,
 }) => {
-  const { login, logoutReason } = useWorkshop();
+  const { login, logoutReason, users } = useWorkshop();
 
   const [identifier, setIdentifier] = useState('');
   const [passOrPin, setPassOrPin] = useState('');
@@ -39,6 +39,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleQuickSelectUser = (user: typeof users[0]) => {
+    setIdentifier(user.username);
+    setPassOrPin(user.pin || '1234');
+    setErrorMsg('');
+    setSuccessMsg(`Usuario ${user.name} seleccionado (PIN cargado). Presiona Iniciar Sesión.`);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,6 +222,56 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               )}
             </button>
           </form>
+
+          {/* Quick Staff User Switcher for Role & Permission Testing */}
+          {users.length > 0 && (
+            <div className="mt-4 pt-3.5 border-t border-neutral-800">
+              <div className="flex items-center justify-between text-[11px] mb-2 font-mono">
+                <span className="text-neutral-400 font-semibold uppercase">Personal Registrado:</span>
+                <span className="text-neutral-500">Clic para probar perfil</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {users.map(u => {
+                  const isBoss = u.role === 'boss';
+                  const isSelected = identifier === u.username;
+                  const activePermsCount = isBoss
+                    ? 9
+                    : Object.values(u.permissions || {}).filter(Boolean).length;
+
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => handleQuickSelectUser(u)}
+                      className={`p-2 rounded-xl text-left border transition-all cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'bg-neutral-800 border-red-500 ring-1 ring-red-500/50'
+                          : 'bg-neutral-950/70 border-neutral-800/80 hover:border-neutral-700 hover:bg-neutral-900'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-xs font-bold text-white truncate">{u.name.split(' ')[0]}</span>
+                        <span
+                          className={`text-[9px] font-mono px-1 py-0.2 rounded font-bold uppercase ${
+                            isBoss
+                              ? 'bg-red-500/20 text-red-300'
+                              : 'bg-blue-500/20 text-blue-300'
+                          }`}
+                        >
+                          {isBoss ? 'Jefe' : 'Mecánico'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-neutral-400 truncate mt-0.5">{u.specialty}</span>
+                      <div className="flex items-center justify-between mt-1 pt-1 border-t border-neutral-850 text-[10px] font-mono">
+                        <span className="text-amber-400">PIN: {u.pin}</span>
+                        <span className="text-neutral-500">{activePermsCount}/9 perms</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Android PWA Install button */}
           <div className="mt-3">

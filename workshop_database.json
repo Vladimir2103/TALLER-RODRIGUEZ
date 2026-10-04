@@ -1,53 +1,9 @@
 {
-  "clients": [
-    {
-      "id": "cli-juan",
-      "name": "Juan Perez",
-      "phone": "+503 7000 0000",
-      "vehicles": [
-        {
-          "brand": "Toyota",
-          "model": "Corolla",
-          "year": 2020,
-          "plate": "P 123-456"
-        }
-      ]
-    }
-  ],
+  "clients": [],
   "parts": [],
   "appointments": [],
   "budgets": [],
-  "workOrders": [
-    {
-      "id": "ot-101",
-      "otNumber": "OT-2026-0001",
-      "clientId": "cli-1",
-      "clientName": "Carlos Martinez",
-      "clientPhone": "+503 7123 4567",
-      "vehicleBrand": "Toyota",
-      "vehicleModel": "Hilux 4x4",
-      "vehiclePlate": "P 890-123",
-      "vehicleYear": 2022,
-      "serviceRequested": "Mantenimiento preventivo 50,000 km y frenos",
-      "assignedTechnician": "Miguel Rodríguez",
-      "stage": "en_reparacion",
-      "createdAt": "2026-10-01",
-      "subtotal": 220,
-      "taxAmount": 28.6,
-      "laborTotal": 80,
-      "total": 248.6,
-      "items": [
-        {
-          "id": "it-1",
-          "description": "Pastillas de freno cerámicas",
-          "quantity": 1,
-          "unitPrice": 85,
-          "total": 85,
-          "type": "part"
-        }
-      ]
-    }
-  ],
+  "workOrders": [],
   "notifications": [],
   "users": [
     {
@@ -142,7 +98,7 @@
       "isActive": true,
       "createdAt": "2026-02-15",
       "permissions": {
-        "canManageAppointments": true,
+        "canManageAppointments": false,
         "canManageWorkOrders": true,
         "canManageBudgets": false,
         "canManageInventory": false,
@@ -156,5 +112,5 @@
     }
   ],
   "mechanicNotifications": [],
-  "lastUpdated": "2026-10-01T23:03:55.492Z"
+  "lastUpdated": "2026-10-04T01:56:41.573Z"
 }
