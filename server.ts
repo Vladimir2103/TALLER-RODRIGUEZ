@@ -17,10 +17,49 @@ import {
 const app = express();
 const server = http.createServer(app);
 
-app.use(express.json({ limit: '20mb' }));
+// Enable trust proxy for Render, Cloud Run, and reverse proxies with SSL termination
+app.set('trust proxy', 1);
 
-// Persistent Database File Path
-const DB_FILE = path.resolve('workshop_database.json');
+// Security Headers Middleware (Production-Hardened for Render)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
+app.use(express.json({ limit: '25mb' }));
+
+// ---------------------------------------------------------------------------
+// Robust Storage Configuration for Render & Local Environments
+// ---------------------------------------------------------------------------
+// Render Persistent Disk is typically mounted at /var/data or custom DATA_DIR
+const isRenderEnvironment = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID);
+const DEFAULT_DATA_DIR = fs.existsSync('/var/data') ? '/var/data' : process.cwd();
+const STORAGE_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : DEFAULT_DATA_DIR;
+
+try {
+  if (!fs.existsSync(STORAGE_DIR)) {
+    fs.mkdirSync(STORAGE_DIR, { recursive: true });
+  }
+} catch (err) {
+  console.warn('[DB] Warning creating STORAGE_DIR, falling back to cwd:', err);
+}
+
+const DB_FILE = process.env.DATABASE_PATH || path.resolve(STORAGE_DIR, 'workshop_database.json');
+const BACKUPS_DIR = path.resolve(STORAGE_DIR, 'backups');
+
+try {
+  if (!fs.existsSync(BACKUPS_DIR)) {
+    fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+  }
+} catch (err) {
+  console.warn('[DB] Warning creating BACKUPS_DIR:', err);
+}
+
+console.log(`[Taller Rodríguez] Almacenamiento persistente configurado en: ${DB_FILE}`);
+console.log(`[Taller Rodríguez] Directorio de respaldos automáticos: ${BACKUPS_DIR}`);
 
 // Interface for Workshop Database State
 interface WorkshopDatabaseState {
@@ -35,25 +74,91 @@ interface WorkshopDatabaseState {
   lastUpdated: string;
 }
 
+// Helper: Rotate old snapshots to keep disk optimized (max 30 snapshots)
+function rotateBackupSnapshots() {
+  try {
+    if (!fs.existsSync(BACKUPS_DIR)) return;
+    const files = fs.readdirSync(BACKUPS_DIR)
+      .filter(f => f.startsWith('backup_') && f.endsWith('.json'))
+      .sort((a, b) => b.localeCompare(a)); // Newest first
+
+    if (files.length > 30) {
+      const toDelete = files.slice(30);
+      for (const file of toDelete) {
+        try {
+          fs.unlinkSync(path.join(BACKUPS_DIR, file));
+        } catch {}
+      }
+    }
+  } catch (err) {
+    console.warn('[DB] Error rotating backups:', err);
+  }
+}
+
+// Helper: Create a timestamped backup snapshot
+function createBackupSnapshot(label: string = 'auto') {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(BACKUPS_DIR, `backup_${timestamp}_${label}.json`);
+    fs.writeFileSync(backupPath, JSON.stringify(state, null, 2), 'utf-8');
+    rotateBackupSnapshots();
+    return backupPath;
+  } catch (err) {
+    console.warn('[DB] Could not create snapshot:', err);
+    return null;
+  }
+}
+
+// Find latest valid backup file if primary DB is missing or corrupted
+function recoverFromLatestBackup(): WorkshopDatabaseState | null {
+  try {
+    if (!fs.existsSync(BACKUPS_DIR)) return null;
+    const files = fs.readdirSync(BACKUPS_DIR)
+      .filter(f => f.startsWith('backup_') && f.endsWith('.json'))
+      .sort((a, b) => b.localeCompare(a));
+
+    for (const f of files) {
+      try {
+        const full = path.join(BACKUPS_DIR, f);
+        const raw = fs.readFileSync(full, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.users) && parsed.users.length > 0) {
+          console.log(`[DB] Recuperada base de datos exitosamente desde respaldo: ${f}`);
+          return parsed;
+        }
+      } catch {}
+    }
+  } catch {}
+  return null;
+}
+
 function loadDatabaseState(): WorkshopDatabaseState {
   try {
     if (fs.existsSync(DB_FILE)) {
       const raw = fs.readFileSync(DB_FILE, 'utf-8');
       const data = JSON.parse(raw);
-      return {
-        clients: Array.isArray(data.clients) ? data.clients : [],
-        parts: Array.isArray(data.parts) ? data.parts : [],
-        appointments: Array.isArray(data.appointments) ? data.appointments : [],
-        budgets: Array.isArray(data.budgets) ? data.budgets : [],
-        workOrders: Array.isArray(data.workOrders) ? data.workOrders : [],
-        notifications: Array.isArray(data.notifications) ? data.notifications : [],
-        users: Array.isArray(data.users) && data.users.length > 0 ? data.users : [...INITIAL_USERS],
-        mechanicNotifications: Array.isArray(data.mechanicNotifications) ? data.mechanicNotifications : [],
-        lastUpdated: data.lastUpdated || new Date().toISOString(),
-      };
+      if (data && typeof data === 'object') {
+        return {
+          clients: Array.isArray(data.clients) ? data.clients : [],
+          parts: Array.isArray(data.parts) ? data.parts : [],
+          appointments: Array.isArray(data.appointments) ? data.appointments : [],
+          budgets: Array.isArray(data.budgets) ? data.budgets : [],
+          workOrders: Array.isArray(data.workOrders) ? data.workOrders : [],
+          notifications: Array.isArray(data.notifications) ? data.notifications : [],
+          users: Array.isArray(data.users) && data.users.length > 0 ? data.users : [...INITIAL_USERS],
+          mechanicNotifications: Array.isArray(data.mechanicNotifications) ? data.mechanicNotifications : [],
+          lastUpdated: data.lastUpdated || new Date().toISOString(),
+        };
+      }
     }
   } catch (err) {
-    console.error('[DB] Error loading workshop_database.json, initializing clean state', err);
+    console.error('[DB] Error leyendo workshop_database.json, intentando recuperar desde respaldo...', err);
+  }
+
+  // Attempt recovery from backup snapshot before starting fresh
+  const recovered = recoverFromLatestBackup();
+  if (recovered) {
+    return recovered;
   }
 
   // Default clean database state (clean operational tables, preserved mechanics)
@@ -74,7 +179,7 @@ function loadDatabaseState(): WorkshopDatabaseState {
     fs.writeFileSync(tempFile, JSON.stringify(cleanDefault, null, 2), 'utf-8');
     fs.renameSync(tempFile, DB_FILE);
   } catch (e) {
-    console.error('[DB] Error initializing database file', e);
+    console.error('[DB] Error inicializando archivo de base de datos:', e);
   }
 
   return cleanDefault;
@@ -82,23 +187,36 @@ function loadDatabaseState(): WorkshopDatabaseState {
 
 // In-Memory Server-Authoritative State loaded from persistent disk file
 let state: WorkshopDatabaseState = loadDatabaseState();
+let mutationCount = 0;
 
 // Bulletproof Atomic Database Persistence (Zero Corruption & Immediate Disk Flush)
-function persistDatabaseState() {
+function persistDatabaseState(forceSnapshot: boolean = false) {
   try {
     state.lastUpdated = new Date().toISOString();
     const tempFile = `${DB_FILE}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 6)}`;
-    fs.writeFileSync(tempFile, JSON.stringify(state, null, 2), 'utf-8');
+    const fd = fs.openSync(tempFile, 'w');
+    fs.writeSync(fd, JSON.stringify(state, null, 2), 0, 'utf-8');
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
     fs.renameSync(tempFile, DB_FILE);
+
+    mutationCount++;
+    // Periodic snapshot every 15 mutations or forced
+    if (forceSnapshot || mutationCount % 15 === 0) {
+      createBackupSnapshot('auto_sync');
+    }
   } catch (err) {
-    console.error('[DB] Error persisting workshop_database.json atomically, trying direct fallback', err);
+    console.error('[DB] Error persistiendo workshop_database.json atómicamente, intentando respaldo directo:', err);
     try {
       fs.writeFileSync(DB_FILE, JSON.stringify(state, null, 2), 'utf-8');
     } catch (e2) {
-      console.error('[DB] Critical: Failed to persist database state', e2);
+      console.error('[DB] Crítico: Falló persistencia directa de base de datos', e2);
     }
   }
 }
+
+// Take an initial startup snapshot to guarantee safety
+createBackupSnapshot('startup');
 
 // WebSocket Server for Real-Time Multi-User Collaboration
 const wss = new WebSocketServer({ server, path: '/ws' });
@@ -755,9 +873,112 @@ app.post('/api/sync', (req, res) => {
   }
 });
 
+// Endpoint to download entire live database file (1-click backup for workshop owner)
+app.get('/api/database/backup', (req, res) => {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `taller_rodriguez_backup_${timestamp}.json`;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(JSON.stringify(state, null, 2));
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Endpoint to restore database from JSON file with safety pre-backup
+app.post('/api/database/restore', (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || typeof payload !== 'object') {
+      return res.status(400).json({ success: false, error: 'Cuerpo de respaldo no válido.' });
+    }
+
+    // Safety pre-backup before applying restore
+    createBackupSnapshot('pre_restore');
+
+    const updatedState: WorkshopDatabaseState = {
+      clients: Array.isArray(payload.clients) ? payload.clients : state.clients,
+      parts: Array.isArray(payload.parts) ? payload.parts : state.parts,
+      appointments: Array.isArray(payload.appointments) ? payload.appointments : state.appointments,
+      budgets: Array.isArray(payload.budgets) ? payload.budgets : state.budgets,
+      workOrders: Array.isArray(payload.workOrders) ? payload.workOrders : state.workOrders,
+      notifications: Array.isArray(payload.notifications) ? payload.notifications : state.notifications,
+      users: Array.isArray(payload.users) && payload.users.length > 0 ? payload.users : state.users,
+      mechanicNotifications: Array.isArray(payload.mechanicNotifications) ? payload.mechanicNotifications : state.mechanicNotifications,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    state = updatedState;
+    persistDatabaseState(true);
+
+    broadcastAll({
+      type: 'STATE_SYNCED',
+      payload: state,
+      connectedClients: wss.clients.size,
+    });
+
+    res.json({
+      success: true,
+      message: 'Base de datos restaurada y sincronizada exitosamente.',
+      stats: {
+        clients: state.clients.length,
+        workOrders: state.workOrders.length,
+        parts: state.parts.length,
+        users: state.users.length,
+        appointments: state.appointments.length,
+        budgets: state.budgets.length,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Endpoint to inspect database health, storage path & snapshot status
+app.get('/api/database/info', (req, res) => {
+  try {
+    let sizeBytes = 0;
+    if (fs.existsSync(DB_FILE)) {
+      sizeBytes = fs.statSync(DB_FILE).size;
+    }
+
+    let snapshotsCount = 0;
+    if (fs.existsSync(BACKUPS_DIR)) {
+      snapshotsCount = fs.readdirSync(BACKUPS_DIR).filter(f => f.endsWith('.json')).length;
+    }
+
+    res.json({
+      success: true,
+      isRender: isRenderEnvironment,
+      storageDirectory: STORAGE_DIR,
+      databaseFile: DB_FILE,
+      backupsDirectory: BACKUPS_DIR,
+      fileSizeBytes: sizeBytes,
+      fileSizeKb: (sizeBytes / 1024).toFixed(2),
+      snapshotsAvailable: snapshotsCount,
+      lastUpdated: state.lastUpdated,
+      records: {
+        users: state.users.length,
+        clients: state.clients.length,
+        parts: state.parts.length,
+        workOrders: state.workOrders.length,
+        appointments: state.appointments.length,
+        budgets: state.budgets.length,
+      },
+      connectedClients: wss.clients.size,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Endpoint to reset to clean slate (empty data, keeping mechanics)
 app.post('/api/reset-clean', (req, res) => {
   try {
+    // Safety snapshot before reset
+    createBackupSnapshot('pre_reset');
+
     state = {
       clients: [],
       parts: [],
@@ -769,7 +990,7 @@ app.post('/api/reset-clean', (req, res) => {
       mechanicNotifications: [],
       lastUpdated: new Date().toISOString(),
     };
-    persistDatabaseState();
+    persistDatabaseState(true);
     broadcastAll({
       type: 'STATE_SYNCED',
       payload: state,
@@ -785,11 +1006,41 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     workshop: 'TALLER RODRIGUEZ RODRIGUEZ',
+    isRender: isRenderEnvironment,
     connectedClients: wss.clients.size,
     databaseFile: DB_FILE,
+    lastUpdated: state.lastUpdated,
     time: new Date().toISOString(),
   });
 });
+
+// Graceful Shutdown for Render Containers (flushes disk immediately on SIGTERM/SIGINT)
+function handleGracefulShutdown(signal: string) {
+  console.log(`[Taller Rodríguez] Señal ${signal} recibida. Forzando guardado y respaldo final de base de datos...`);
+  try {
+    createBackupSnapshot(`shutdown_${signal.toLowerCase()}`);
+    persistDatabaseState(true);
+    console.log('[Taller Rodríguez] Base de datos persistida con éxito.');
+  } catch (err) {
+    console.error('[Taller Rodríguez] Error durante guardado de apagado:', err);
+  }
+
+  wss.clients.forEach(client => {
+    try {
+      client.close(1001, 'Server restarting');
+    } catch {}
+  });
+
+  server.close(() => {
+    console.log('[Taller Rodríguez] Servidor cerrado ordenadamente.');
+    process.exit(0);
+  });
+
+  setTimeout(() => process.exit(0), 4000);
+}
+
+process.on('SIGTERM', () => handleGracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => handleGracefulShutdown('SIGINT'));
 
 // Vite middleware in dev / Static files in prod
 async function startServer() {

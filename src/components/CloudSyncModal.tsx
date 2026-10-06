@@ -118,20 +118,20 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({ isOpen, onClose,
             <span className="font-semibold text-white block">Respaldo y Portabilidad de Datos</span>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Export Button */}
-              <button
-                type="button"
-                onClick={exportBackupData}
-                className="p-3 bg-neutral-950 hover:bg-neutral-850 border border-neutral-800 rounded-xl flex items-center gap-2.5 text-left transition-colors cursor-pointer group"
+              {/* Server DB Download Button */}
+              <a
+                href="/api/database/backup"
+                download
+                className="p-3 bg-neutral-950 hover:bg-neutral-850 border border-neutral-800 rounded-xl flex items-center gap-2.5 text-left transition-colors cursor-pointer group no-underline"
               >
-                <div className="w-8 h-8 rounded-lg bg-neutral-900 group-hover:bg-neutral-800 flex items-center justify-center text-neutral-300 shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 group-hover:bg-emerald-500/20 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
                   <Download className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="font-semibold text-white block text-xs">Descargar Respaldo JSON</span>
-                  <span className="text-[10px] text-neutral-400">Guarda todos los datos del taller</span>
+                  <span className="font-semibold text-white block text-xs">Descargar BD Servidor</span>
+                  <span className="text-[10px] text-neutral-400">Archivo JSON oficial (Render / Cloud)</span>
                 </div>
-              </button>
+              </a>
 
               {/* Import Button */}
               <label className="p-3 bg-neutral-950 hover:bg-neutral-850 border border-neutral-800 rounded-xl flex items-center gap-2.5 text-left transition-colors cursor-pointer group">
@@ -140,10 +140,21 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({ isOpen, onClose,
                 </div>
                 <div>
                   <span className="font-semibold text-white block text-xs">Restaurar Copia</span>
-                  <span className="text-[10px] text-neutral-400">Cargar archivo de backup</span>
+                  <span className="text-[10px] text-neutral-400">Cargar y sincronizar base de datos</span>
                 </div>
                 <input type="file" accept=".json" onChange={handleFileUpload} className="hidden" />
               </label>
+            </div>
+
+            {/* Storage Architecture Security Note */}
+            <div className="p-2.5 rounded-lg bg-neutral-950/70 border border-neutral-850 flex items-start gap-2 text-[11px] text-neutral-400">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="text-white font-medium block">Base de Datos 100% Optimizada para Render</span>
+                <span className="text-[10px] text-neutral-400">
+                  Persistencia atómica con <code className="text-neutral-300">fsync</code>, respaldos automáticos rotativos en disco y recuperación instantánea ante reinicios de contenedor.
+                </span>
+              </div>
             </div>
 
             {importStatus && (

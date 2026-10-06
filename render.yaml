@@ -1,10 +1,20 @@
 services:
   - type: web
-    name: taller-rodriguez-sistema
-    env: node
+    name: taller-rodriguez-rodriguez
+    runtime: node
     plan: free
-    buildCommand: npm install --legacy-peer-deps && npm run build
+    region: oregon
+    buildCommand: npm install && npm run build
     startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
+    # Opcional (Render Paid Plan con Disco Persistente):
+    # disk:
+    #   name: taller-db-storage
+    #   mountPath: /var/data
+    #   sizeGB: 1

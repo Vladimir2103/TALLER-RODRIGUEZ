@@ -162,6 +162,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   placeholder="Ingresa tu usuario o correo"
                   autoCapitalize="none"
                   autoCorrect="off"
+                  autoComplete="off"
                   spellCheck="false"
                   disabled={isLoading}
                   className="w-full pl-11 pr-4 py-3 bg-neutral-950 border border-neutral-800 hover:border-neutral-700 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-xl text-sm sm:text-base text-white placeholder-neutral-500 focus:outline-none transition-colors disabled:opacity-50"
@@ -181,6 +182,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   value={passOrPin}
                   onChange={e => setPassOrPin(e.target.value)}
                   placeholder="Ingresa tu PIN o contraseña"
+                  autoComplete="off"
                   disabled={isLoading}
                   className="w-full pl-11 pr-11 py-3 bg-neutral-950 border border-neutral-800 hover:border-neutral-700 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-xl text-sm sm:text-base text-white placeholder-neutral-500 focus:outline-none transition-colors disabled:opacity-50"
                 />

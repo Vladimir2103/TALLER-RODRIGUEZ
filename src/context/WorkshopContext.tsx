@@ -567,6 +567,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         break;
       }
 
+      case 'USER_UPDATE':
       case 'USER_UPDATED': {
         const { user } = data.payload;
         if (user) {
@@ -578,6 +579,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         break;
       }
 
+      case 'USER_CREATE':
       case 'USER_CREATED': {
         const { user } = data.payload;
         if (user) {
@@ -586,6 +588,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         break;
       }
 
+      case 'USER_DELETE':
       case 'USER_DELETED': {
         const { userId } = data.payload;
         if (userId) {
@@ -1601,13 +1604,24 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const importBackupData = (jsonData: string): boolean => {
     try {
       const data = JSON.parse(jsonData);
-      if (data.users) setUsers(data.users);
-      if (data.clients) setClients(data.clients);
-      if (data.parts) setParts(data.parts);
-      if (data.appointments) setAppointments(data.appointments);
-      if (data.budgets) setBudgets(data.budgets);
-      if (data.workOrders) setWorkOrders(data.workOrders);
-      if (data.notifications) setNotifications(data.notifications);
+      if (data.users && Array.isArray(data.users)) setUsers(data.users);
+      if (data.clients && Array.isArray(data.clients)) setClients(data.clients);
+      if (data.parts && Array.isArray(data.parts)) setParts(data.parts);
+      if (data.appointments && Array.isArray(data.appointments)) setAppointments(data.appointments);
+      if (data.budgets && Array.isArray(data.budgets)) setBudgets(data.budgets);
+      if (data.workOrders && Array.isArray(data.workOrders)) setWorkOrders(data.workOrders);
+      if (data.notifications && Array.isArray(data.notifications)) setNotifications(data.notifications);
+      if (data.mechanicNotifications && Array.isArray(data.mechanicNotifications)) setMechanicNotifications(data.mechanicNotifications);
+
+      // Persist directly to backend database on server / Render
+      fetch('/api/database/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }).catch(err => {
+        console.warn('Could not post restore to /api/database/restore', err);
+      });
+
       triggerCloudSync();
       return true;
     } catch (e) {
