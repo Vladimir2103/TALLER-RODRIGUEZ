@@ -229,7 +229,8 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
+      <div className={selectedBudgetForPrint ? 'no-print space-y-6' : 'space-y-6'}>
+        {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-neutral-800">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
@@ -706,21 +707,28 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
           </div>
         </div>
       )}
+      </div>
 
       {/* Modal: Vista Formal / Impresión de Presupuesto */}
       {selectedBudgetForPrint && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs print-modal-container">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh] print:max-h-none print:h-auto print:border-none print:shadow-none print:bg-white print:w-full print:max-w-none print:overflow-visible">
             {/* Header controls (hidden in print) */}
             <div className="no-print flex items-center justify-between px-5 py-3.5 border-b border-neutral-800 bg-neutral-950/70">
-              <span className="text-xs font-semibold text-white">Vista Previa para Cliente / Impresión</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-white">Vista Previa para Cliente / Impresión</span>
+                <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  1 Sola Copia (1 Hoja)
+                </span>
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => window.print()}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950"
+                  title="Imprimir presupuesto en 1 sola copia"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Imprimir / Guardar PDF</span>
+                  <span>Imprimir (1 Sola Copia)</span>
                 </button>
                 <button
                   onClick={() => setSelectedBudgetForPrint(null)}
@@ -732,7 +740,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
             </div>
 
             {/* Printable Document Body */}
-            <div className="p-6 sm:p-8 overflow-y-auto bg-neutral-950 text-white font-sans text-xs space-y-6 print-clean">
+            <div className="p-5 sm:p-6 overflow-y-auto bg-neutral-950 text-white font-sans text-xs space-y-4 print:space-y-3 print:p-2 print-clean print-single-page">
               {/* Header with Workshop Logo */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-6 border-b border-neutral-800">
                 <div className="flex items-center gap-3">

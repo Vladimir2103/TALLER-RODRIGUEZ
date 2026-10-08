@@ -133,11 +133,13 @@ function recoverFromLatestBackup(): WorkshopDatabaseState | null {
 }
 
 function loadDatabaseState(): WorkshopDatabaseState {
+  // 1. Try reading from primary DB_FILE
   try {
     if (fs.existsSync(DB_FILE)) {
       const raw = fs.readFileSync(DB_FILE, 'utf-8');
       const data = JSON.parse(raw);
       if (data && typeof data === 'object') {
+        const loadedUsers = Array.isArray(data.users) && data.users.length > 0 ? data.users : [...INITIAL_USERS];
         return {
           clients: Array.isArray(data.clients) ? data.clients : [],
           parts: Array.isArray(data.parts) ? data.parts : [],
@@ -145,23 +147,48 @@ function loadDatabaseState(): WorkshopDatabaseState {
           budgets: Array.isArray(data.budgets) ? data.budgets : [],
           workOrders: Array.isArray(data.workOrders) ? data.workOrders : [],
           notifications: Array.isArray(data.notifications) ? data.notifications : [],
-          users: Array.isArray(data.users) && data.users.length > 0 ? data.users : [...INITIAL_USERS],
+          users: loadedUsers,
           mechanicNotifications: Array.isArray(data.mechanicNotifications) ? data.mechanicNotifications : [],
           lastUpdated: data.lastUpdated || new Date().toISOString(),
         };
       }
     }
   } catch (err) {
-    console.error('[DB] Error leyendo workshop_database.json, intentando recuperar desde respaldo...', err);
+    console.error('[DB] Error leyendo DB_FILE:', err);
   }
 
-  // Attempt recovery from backup snapshot before starting fresh
+  // 2. Check root workspace database file if different from DB_FILE
+  try {
+    const rootPath = path.resolve(process.cwd(), 'workshop_database.json');
+    if (rootPath !== path.resolve(DB_FILE) && fs.existsSync(rootPath)) {
+      const raw = fs.readFileSync(rootPath, 'utf-8');
+      const data = JSON.parse(raw);
+      if (data && typeof data === 'object') {
+        const loadedUsers = Array.isArray(data.users) && data.users.length > 0 ? data.users : [...INITIAL_USERS];
+        return {
+          clients: Array.isArray(data.clients) ? data.clients : [],
+          parts: Array.isArray(data.parts) ? data.parts : [],
+          appointments: Array.isArray(data.appointments) ? data.appointments : [],
+          budgets: Array.isArray(data.budgets) ? data.budgets : [],
+          workOrders: Array.isArray(data.workOrders) ? data.workOrders : [],
+          notifications: Array.isArray(data.notifications) ? data.notifications : [],
+          users: loadedUsers,
+          mechanicNotifications: Array.isArray(data.mechanicNotifications) ? data.mechanicNotifications : [],
+          lastUpdated: data.lastUpdated || new Date().toISOString(),
+        };
+      }
+    }
+  } catch (err2) {
+    console.error('[DB] Error leyendo archivo de base de datos en workspace:', err2);
+  }
+
+  // 3. Attempt recovery from backup snapshot before starting fresh
   const recovered = recoverFromLatestBackup();
   if (recovered) {
     return recovered;
   }
 
-  // Default clean database state (clean operational tables, preserved mechanics)
+  // 4. Default clean database state
   const cleanDefault: WorkshopDatabaseState = {
     clients: [],
     parts: [],
@@ -193,16 +220,27 @@ let mutationCount = 0;
 function persistDatabaseState(forceSnapshot: boolean = false) {
   try {
     state.lastUpdated = new Date().toISOString();
+    const jsonStr = JSON.stringify(state, null, 2);
+
+    // Primary write to DB_FILE
     const tempFile = `${DB_FILE}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 6)}`;
     const fd = fs.openSync(tempFile, 'w');
-    fs.writeSync(fd, JSON.stringify(state, null, 2), 0, 'utf-8');
+    fs.writeSync(fd, jsonStr, 0, 'utf-8');
     fs.fsyncSync(fd);
     fs.closeSync(fd);
     fs.renameSync(tempFile, DB_FILE);
 
+    // Mirror to workspace cwd if different
+    const rootPath = path.resolve(process.cwd(), 'workshop_database.json');
+    if (path.resolve(DB_FILE) !== rootPath) {
+      try {
+        fs.writeFileSync(rootPath, jsonStr, 'utf-8');
+      } catch {}
+    }
+
     mutationCount++;
-    // Periodic snapshot every 15 mutations or forced
-    if (forceSnapshot || mutationCount % 15 === 0) {
+    // Periodic snapshot every 10 mutations or forced
+    if (forceSnapshot || mutationCount % 10 === 0) {
       createBackupSnapshot('auto_sync');
     }
   } catch (err) {
@@ -894,27 +932,16 @@ app.post('/api/sync', (req, res) => {
 
       for (const k of arrayKeys) {
         if (Array.isArray(incoming[k])) {
-          const currentArr = Array.isArray((state as any)[k]) ? (state as any)[k] : [];
-          if (currentArr.length === 0) {
-            // Server was empty for this table (e.g. freshly started container) -> populate from incoming
+          if (k === 'users') {
+            if (incoming[k].length > 0) {
+              state.users = incoming[k];
+            }
+          } else {
             (state as any)[k] = incoming[k];
-          } else if (incoming[k].length > 0) {
-            // Server already has records -> merge by ID non-destructively
-            const mergedMap = new Map<string, any>();
-            currentArr.forEach((item: any) => {
-              if (item && item.id) mergedMap.set(item.id, item);
-            });
-            incoming[k].forEach((item: any) => {
-              if (item && item.id) {
-                const existing = mergedMap.get(item.id);
-                mergedMap.set(item.id, existing ? { ...existing, ...item } : item);
-              }
-            });
-            (state as any)[k] = Array.from(mergedMap.values());
           }
         }
       }
-      persistDatabaseState();
+      persistDatabaseState(true);
       broadcastAll({
         type: 'STATE_SYNCED',
         payload: state,

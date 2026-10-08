@@ -375,17 +375,110 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     switch (data.type) {
-      case 'INIT_STATE':
+      case 'INIT_STATE': {
+        const p = data.payload;
+        if (!p) break;
+
+        // Retrieve local cache from localStorage to prevent cold restarts from wiping real data
+        let localClients: Client[] = [];
+        let localWorkOrders: WorkOrder[] = [];
+        let localParts: Part[] = [];
+        let localAppointments: Appointment[] = [];
+        let localBudgets: Budget[] = [];
+        let localUsers: User[] = [];
+        let localNotifs: NotificationLog[] = [];
+        let localMechNotifs: MechanicAssignmentNotification[] = [];
+
+        try {
+          const sc = localStorage.getItem(`${STORAGE_KEY}_clients`);
+          if (sc) localClients = JSON.parse(sc);
+          const swo = localStorage.getItem(`${STORAGE_KEY}_workOrders`);
+          if (swo) localWorkOrders = JSON.parse(swo);
+          const sp = localStorage.getItem(`${STORAGE_KEY}_parts`);
+          if (sp) localParts = JSON.parse(sp);
+          const sa = localStorage.getItem(`${STORAGE_KEY}_appointments`);
+          if (sa) localAppointments = JSON.parse(sa);
+          const sb = localStorage.getItem(`${STORAGE_KEY}_budgets`);
+          if (sb) localBudgets = JSON.parse(sb);
+          const su = localStorage.getItem(`${STORAGE_KEY}_users`);
+          if (su) localUsers = JSON.parse(su);
+          const sn = localStorage.getItem(`${STORAGE_KEY}_notifications`);
+          if (sn) localNotifs = JSON.parse(sn);
+          const smn = localStorage.getItem(`${STORAGE_KEY}_mechanicNotifications`);
+          if (smn) localMechNotifs = JSON.parse(smn);
+        } catch {}
+
+        // Protect operational tables: if server restarted with 0 records, PRESERVE local user data!
+        const activeClients = Array.isArray(p.clients) && p.clients.length > 0 ? p.clients : (localClients.length > 0 ? localClients : (Array.isArray(p.clients) ? p.clients : []));
+        const activeWorkOrders = Array.isArray(p.workOrders) && p.workOrders.length > 0 ? p.workOrders : (localWorkOrders.length > 0 ? localWorkOrders : (Array.isArray(p.workOrders) ? p.workOrders : []));
+        const activeParts = Array.isArray(p.parts) && p.parts.length > 0 ? p.parts : (localParts.length > 0 ? localParts : (Array.isArray(p.parts) ? p.parts : []));
+        const activeAppointments = Array.isArray(p.appointments) && p.appointments.length > 0 ? p.appointments : (localAppointments.length > 0 ? localAppointments : (Array.isArray(p.appointments) ? p.appointments : []));
+        const activeBudgets = Array.isArray(p.budgets) && p.budgets.length > 0 ? p.budgets : (localBudgets.length > 0 ? localBudgets : (Array.isArray(p.budgets) ? p.budgets : []));
+        const activeNotifs = Array.isArray(p.notifications) && p.notifications.length > 0 ? p.notifications : (localNotifs.length > 0 ? localNotifs : (Array.isArray(p.notifications) ? p.notifications : []));
+        const activeMechNotifs = Array.isArray(p.mechanicNotifications) && p.mechanicNotifications.length > 0 ? p.mechanicNotifications : (localMechNotifs.length > 0 ? localMechNotifs : (Array.isArray(p.mechanicNotifications) ? p.mechanicNotifications : []));
+
+        // For users / mechanics:
+        // Check if users were customized locally (mechanics added or deleted)
+        const isUsersModifiedLocally = localStorage.getItem(`${STORAGE_KEY}_users_modified`) === 'true';
+        let activeUsers = Array.isArray(p.users) && p.users.length > 0 ? p.users : [...INITIAL_USERS];
+        if (localUsers.length > 0 && isUsersModifiedLocally) {
+          const defaultUserIds = INITIAL_USERS.map(u => u.id).sort().join(',');
+          const serverUserIds = (p.users || []).map((u: any) => u.id).sort().join(',');
+          if (serverUserIds === defaultUserIds) {
+            // Server just restarted with pristine default users -> prioritize local customized mechanics!
+            activeUsers = localUsers;
+          }
+        }
+
+        setClients(activeClients);
+        setWorkOrders(activeWorkOrders);
+        setParts(activeParts);
+        setAppointments(activeAppointments);
+        setBudgets(activeBudgets);
+        setUsers(activeUsers);
+        setNotifications(activeNotifs);
+        setMechanicNotifications(activeMechNotifs);
+        isInitializedFromServerRef.current = true;
+
+        // If local data rescued a cold/wiped server state, re-hydrate server immediately so database is saved!
+        const needsHydration = (
+          (activeClients.length > 0 && (!p.clients || p.clients.length === 0)) ||
+          (activeWorkOrders.length > 0 && (!p.workOrders || p.workOrders.length === 0)) ||
+          (activeParts.length > 0 && (!p.parts || p.parts.length === 0)) ||
+          (activeAppointments.length > 0 && (!p.appointments || p.appointments.length === 0)) ||
+          (activeBudgets.length > 0 && (!p.budgets || p.budgets.length === 0)) ||
+          (activeUsers !== p.users && isUsersModifiedLocally)
+        );
+
+        if (needsHydration) {
+          fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              clients: activeClients,
+              parts: activeParts,
+              appointments: activeAppointments,
+              budgets: activeBudgets,
+              workOrders: activeWorkOrders,
+              notifications: activeNotifs,
+              mechanicNotifications: activeMechNotifs,
+              users: activeUsers,
+            }),
+          }).catch(e => console.warn('INIT_STATE re-hydration notice:', e));
+        }
+        break;
+      }
+
       case 'STATE_SYNCED': {
         const p = data.payload;
         if (!p) break;
-        if (p.workOrders) setWorkOrders(p.workOrders);
-        if (p.users && Array.isArray(p.users) && p.users.length > 0) setUsers(p.users);
-        if (p.mechanicNotifications) setMechanicNotifications(p.mechanicNotifications);
-        if (p.clients) setClients(p.clients);
-        if (p.parts) setParts(p.parts);
-        if (p.appointments) setAppointments(p.appointments);
-        if (p.budgets) setBudgets(p.budgets);
+        if (Array.isArray(p.workOrders)) setWorkOrders(p.workOrders);
+        if (Array.isArray(p.users) && p.users.length > 0) setUsers(p.users);
+        if (Array.isArray(p.mechanicNotifications)) setMechanicNotifications(p.mechanicNotifications);
+        if (Array.isArray(p.clients)) setClients(p.clients);
+        if (Array.isArray(p.parts)) setParts(p.parts);
+        if (Array.isArray(p.appointments)) setAppointments(p.appointments);
+        if (Array.isArray(p.budgets)) setBudgets(p.budgets);
         isInitializedFromServerRef.current = true;
         break;
       }
@@ -736,12 +829,12 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const activeMechNotifs = Array.isArray(p.mechanicNotifications) && p.mechanicNotifications.length > 0 ? p.mechanicNotifications : (localMechNotifs.length > 0 ? localMechNotifs : (Array.isArray(p.mechanicNotifications) ? p.mechanicNotifications : []));
 
           // For users: if local users list was customized (mechanics added or deleted), preserve it over server clean default
+          const isUsersModifiedLocally = localStorage.getItem(`${STORAGE_KEY}_users_modified`) === 'true';
           let activeUsers = Array.isArray(p.users) && p.users.length > 0 ? p.users : [...INITIAL_USERS];
-          if (localUsers.length > 0 && Array.isArray(p.users)) {
-            const serverUserIds = p.users.map((u: any) => u.id).sort().join(',');
+          if (localUsers.length > 0 && isUsersModifiedLocally) {
+            const serverUserIds = (p.users || []).map((u: any) => u.id).sort().join(',');
             const defaultUserIds = INITIAL_USERS.map(u => u.id).sort().join(',');
-            const localUserIds = localUsers.map(u => u.id).sort().join(',');
-            if (serverUserIds === defaultUserIds && localUserIds !== defaultUserIds) {
+            if (serverUserIds === defaultUserIds) {
               activeUsers = localUsers;
             }
           }
@@ -1563,6 +1656,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setUsers(nextUsers);
     try {
       localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(nextUsers));
+      localStorage.setItem(`${STORAGE_KEY}_users_modified`, 'true');
     } catch {}
 
     fetch('/api/users/update', {
@@ -1597,6 +1691,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setUsers(nextUsers);
     try {
       localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(nextUsers));
+      localStorage.setItem(`${STORAGE_KEY}_users_modified`, 'true');
     } catch {}
 
     if (updatedUser) {
@@ -1619,6 +1714,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setUsers(nextUsers);
     try {
       localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(nextUsers));
+      localStorage.setItem(`${STORAGE_KEY}_users_modified`, 'true');
     } catch {}
 
     if (currentUser?.id === id) {
@@ -1661,6 +1757,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setUsers(nextUsers);
     try {
       localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(nextUsers));
+      localStorage.setItem(`${STORAGE_KEY}_users_modified`, 'true');
     } catch {}
 
     if (updatedUser) {

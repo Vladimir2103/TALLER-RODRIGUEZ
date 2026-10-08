@@ -26,22 +26,116 @@
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* Print layout optimizations for Presupuestos & Órdenes de Trabajo */
+/* Print layout optimizations for Presupuestos & Órdenes de Trabajo (1 Sola Hoja / Copia Única) */
 @media print {
-  body {
-    background-color: #ffffff !important;
-    color: #000000 !important;
+  @page {
+    size: portrait;
+    margin: 6mm 8mm;
   }
+
+  html, body {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
   .no-print {
     display: none !important;
   }
+
   .print-only {
     display: block !important;
   }
+
+  /* Force modal containers to flow cleanly on the page without overlay cutoffs */
+  .print-modal-container {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    inset: auto !important;
+    overflow: visible !important;
+  }
+
   .print-clean {
-    border: 1px solid #d4d4d8 !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 4px !important;
     box-shadow: none !important;
     background: #ffffff !important;
-    color: #000000 !important;
+    color: #111827 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 8px 12px !important;
+    margin: 0 auto !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Single-page enforcement: avoid page breaks across the printed document */
+  .print-single-page {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-clean * {
+    color: #111827 !important;
+    border-color: #e5e7eb !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .print-clean .text-white {
+    color: #111827 !important;
+  }
+
+  .print-clean .text-neutral-200 {
+    color: #1f2937 !important;
+  }
+
+  .print-clean .text-neutral-400,
+  .print-clean .text-neutral-500 {
+    color: #4b5563 !important;
+  }
+
+  .print-clean .bg-neutral-900,
+  .print-clean .bg-neutral-950 {
+    background: #f9fafb !important;
+  }
+
+  .print-clean .border-neutral-800,
+  .print-clean .border-neutral-700 {
+    border-color: #d1d5db !important;
+  }
+
+  .print-clean .text-red-500,
+  .print-clean .text-red-400 {
+    color: #dc2626 !important;
+  }
+
+  .print-clean .text-emerald-400 {
+    color: #059669 !important;
+  }
+
+  .print-clean .text-amber-300 {
+    color: #d97706 !important;
+  }
+
+  table {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  tr, td, th {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }

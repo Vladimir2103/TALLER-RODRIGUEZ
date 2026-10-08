@@ -233,7 +233,8 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
+      <div className={selectedOrderForPrint ? 'no-print space-y-6' : 'space-y-6'}>
+        {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-neutral-800">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
@@ -988,13 +989,19 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
           </div>
         </div>
       )}
+      </div>
 
-      {/* Modal: Vista Formal / Impresión de Orden de Trabajo */}
+      {/* Modal: Vista Formal / Impresión de Orden de Trabajo (Configurado para 1 Sola Copia) */}
       {selectedOrderForPrint && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs print-modal-container">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh] print:max-h-none print:h-auto print:border-none print:shadow-none print:bg-white print:w-full print:max-w-none print:overflow-visible">
             <div className="no-print flex items-center justify-between px-5 py-3.5 border-b border-neutral-800 bg-neutral-950/70">
-              <span className="text-xs font-semibold text-white">Hoja de Taller & Orden de Trabajo</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-white">Hoja de Taller & Orden de Trabajo</span>
+                <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  1 Sola Copia (1 Hoja)
+                </span>
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
@@ -1009,10 +1016,11 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                 </button>
                 <button
                   onClick={() => window.print()}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950"
+                  title="Imprimir formato en 1 sola copia (1 página)"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Imprimir Formato</span>
+                  <span>Imprimir (1 Sola Copia)</span>
                 </button>
                 <button
                   onClick={() => setSelectedOrderForPrint(null)}
@@ -1023,14 +1031,14 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
               </div>
             </div>
 
-            {/* Document Sheet */}
-            <div className="p-6 sm:p-8 overflow-y-auto bg-neutral-950 text-white font-sans text-xs space-y-6 print-clean">
+            {/* Document Sheet - Strictly designed to fit in 1 Single Page */}
+            <div className="p-5 sm:p-6 overflow-y-auto bg-neutral-950 text-white font-sans text-xs space-y-3.5 print:space-y-2.5 print:p-2 print-clean print-single-page">
               {/* Header with Logo */}
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-6 border-b border-neutral-800">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4 border-b border-neutral-800">
                 <div className="flex items-center gap-3">
-                  <Logo className="w-16 h-16 shrink-0" theme="dark" showText={false} />
+                  <Logo className="w-14 h-14 shrink-0" theme="dark" showText={false} />
                   <div>
-                    <h2 className="text-base font-extrabold tracking-tight text-white uppercase">
+                    <h2 className="text-sm font-extrabold tracking-tight text-white uppercase">
                       {WORKSHOP_CONFIG.name}
                     </h2>
                     <p className="text-[11px] text-neutral-400">{WORKSHOP_CONFIG.legalName}</p>
@@ -1045,10 +1053,13 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                   <div className="text-xs font-bold uppercase tracking-wider text-red-500">
                     Orden de Trabajo Oficial
                   </div>
-                  <div className="text-xl font-bold font-mono text-white mt-0.5">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 font-mono">
+                    COPIA ÚNICA · TALLER Y CLIENTE (1 DE 1)
+                  </div>
+                  <div className="text-lg font-bold font-mono text-white mt-0.5">
                     {selectedOrderForPrint.otNumber}
                   </div>
-                  <div className="text-neutral-400 text-[11px] mt-1">
+                  <div className="text-neutral-400 text-[11px]">
                     Ingreso: {selectedOrderForPrint.startDate}
                   </div>
                   <div className="text-neutral-400 text-[11px]">
@@ -1058,51 +1069,51 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
               </div>
 
               {/* Vehicle & Inspection Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-neutral-900 border border-neutral-800">
-                <div className="space-y-1">
-                  <span className="text-[10px] uppercase font-mono text-neutral-500 block mb-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg bg-neutral-900 border border-neutral-800">
+                <div className="space-y-0.5">
+                  <span className="text-[9px] uppercase font-mono text-neutral-500 block">
                     Cliente & Contacto
                   </span>
-                  <div className="font-semibold text-white text-sm">{selectedOrderForPrint.clientName}</div>
-                  <div className="text-neutral-400 font-mono">Tel: {selectedOrderForPrint.clientPhone}</div>
+                  <div className="font-semibold text-white text-xs">{selectedOrderForPrint.clientName}</div>
+                  <div className="text-neutral-400 font-mono text-[11px]">Tel: {selectedOrderForPrint.clientPhone}</div>
                   {selectedOrderForPrint.clientEmail && (
-                    <div className="text-neutral-400">{selectedOrderForPrint.clientEmail}</div>
+                    <div className="text-neutral-400 text-[11px]">{selectedOrderForPrint.clientEmail}</div>
                   )}
                 </div>
 
-                <div className="space-y-1">
-                  <span className="text-[10px] uppercase font-mono text-neutral-500 block mb-1">
+                <div className="space-y-0.5">
+                  <span className="text-[9px] uppercase font-mono text-neutral-500 block">
                     Ficha Técnica del Vehículo
                   </span>
-                  <div className="font-semibold text-white text-sm">
+                  <div className="font-semibold text-white text-xs">
                     {selectedOrderForPrint.vehicleBrand} {selectedOrderForPrint.vehicleModel} (
                     {selectedOrderForPrint.vehicleYear})
                   </div>
-                  <div className="text-neutral-400 font-mono">
+                  <div className="text-neutral-400 font-mono text-[11px]">
                     Placas: <strong className="text-white">{selectedOrderForPrint.vehiclePlate}</strong> · Km:{' '}
                     {selectedOrderForPrint.mileageIn.toLocaleString()} km
                   </div>
-                  <div className="text-neutral-400 font-mono">
+                  <div className="text-neutral-400 font-mono text-[11px]">
                     Combustible: {selectedOrderForPrint.fuelLevel}
                   </div>
                 </div>
               </div>
 
               {/* Inspection notes */}
-              <div className="p-3 bg-neutral-900 border border-neutral-800 rounded-lg">
-                <span className="text-[10px] font-mono uppercase text-neutral-400 block mb-1">
+              <div className="p-2.5 bg-neutral-900 border border-neutral-800 rounded-lg text-[11px]">
+                <span className="text-[9px] font-mono uppercase text-neutral-400 block mb-0.5">
                   Inspección y Falla Reportada:
                 </span>
                 <p className="text-neutral-200">
                   <strong>Reporte Cliente:</strong> {selectedOrderForPrint.reportedFault}
                 </p>
                 {selectedOrderForPrint.diagnosedProblem && (
-                  <p className="text-neutral-200 mt-1">
+                  <p className="text-neutral-200 mt-0.5">
                     <strong>Diagnóstico Técnico:</strong> {selectedOrderForPrint.diagnosedProblem}
                   </p>
                 )}
                 {selectedOrderForPrint.damagesInspectionNotes && (
-                  <p className="text-neutral-400 italic text-[11px] mt-1">
+                  <p className="text-neutral-400 italic text-[10px] mt-0.5">
                     Condiciones preexistentes: {selectedOrderForPrint.damagesInspectionNotes}
                   </p>
                 )}
@@ -1110,40 +1121,40 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
 
               {/* Items & Labor */}
               <div>
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse text-[11px]">
                   <thead>
-                    <tr className="border-b border-neutral-800 text-neutral-400 uppercase font-mono text-[10px]">
-                      <th className="py-2 px-3">Código</th>
-                      <th className="py-2 px-3">Concepto / Repuesto</th>
-                      <th className="py-2 px-3 text-center">Cant / Horas</th>
-                      <th className="py-2 px-3 text-right">P. Unitario</th>
-                      <th className="py-2 px-3 text-right">Importe</th>
+                    <tr className="border-b border-neutral-800 text-neutral-400 uppercase font-mono text-[9px]">
+                      <th className="py-1.5 px-2">Código</th>
+                      <th className="py-1.5 px-2">Concepto / Repuesto</th>
+                      <th className="py-1.5 px-2 text-center">Cant / Horas</th>
+                      <th className="py-1.5 px-2 text-right">P. Unitario</th>
+                      <th className="py-1.5 px-2 text-right">Importe</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-850">
                     {selectedOrderForPrint.partsUsed.map((p, idx) => (
                       <tr key={idx}>
-                        <td className="py-2 px-3 font-mono text-[11px] text-neutral-400">{p.sku}</td>
-                        <td className="py-2 px-3 text-white font-medium">{p.name}</td>
-                        <td className="py-2 px-3 text-center font-mono">{p.quantity}</td>
-                        <td className="py-2 px-3 text-right font-mono text-neutral-400 tabular-nums">
+                        <td className="py-1 px-2 font-mono text-[10px] text-neutral-400">{p.sku}</td>
+                        <td className="py-1 px-2 text-white font-medium">{p.name}</td>
+                        <td className="py-1 px-2 text-center font-mono">{p.quantity}</td>
+                        <td className="py-1 px-2 text-right font-mono text-neutral-400 tabular-nums">
                           {formatUSD(p.unitPrice)}
                         </td>
-                        <td className="py-2 px-3 text-right font-mono text-white font-semibold tabular-nums">
+                        <td className="py-1 px-2 text-right font-mono text-white font-semibold tabular-nums">
                           {formatUSD(p.total)}
                         </td>
                       </tr>
                     ))}
                     <tr>
-                      <td className="py-2 px-3 font-mono text-[11px] text-neutral-400">MO-TEC</td>
-                      <td className="py-2 px-3 text-white font-medium">
+                      <td className="py-1 px-2 font-mono text-[10px] text-neutral-400">MO-TEC</td>
+                      <td className="py-1 px-2 text-white font-medium">
                         Mano de Obra Mecánica Calificada ({selectedOrderForPrint.laborHours} hrs)
                       </td>
-                      <td className="py-2 px-3 text-center font-mono">{selectedOrderForPrint.laborHours}</td>
-                      <td className="py-2 px-3 text-right font-mono text-neutral-400 tabular-nums">
+                      <td className="py-1 px-2 text-center font-mono">{selectedOrderForPrint.laborHours}</td>
+                      <td className="py-1 px-2 text-right font-mono text-neutral-400 tabular-nums">
                         {formatUSD(selectedOrderForPrint.laborRatePerHour)}
                       </td>
-                      <td className="py-2 px-3 text-right font-mono text-white font-semibold tabular-nums">
+                      <td className="py-1 px-2 text-right font-mono text-white font-semibold tabular-nums">
                         {formatUSD(selectedOrderForPrint.laborTotal)}
                       </td>
                     </tr>
@@ -1152,8 +1163,8 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
               </div>
 
               {/* Total calculations - Tax removed completely for El Salvador work orders */}
-              <div className="flex justify-end pt-4 border-t border-neutral-800">
-                <div className="w-64 space-y-1.5 text-xs">
+              <div className="flex justify-end pt-2 border-t border-neutral-800">
+                <div className="w-60 space-y-1 text-[11px]">
                   <div className="flex justify-between text-neutral-400">
                     <span>Subtotal:</span>
                     <span className="font-mono text-white">
@@ -1168,13 +1179,13 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between pt-1 border-t border-neutral-800 text-sm font-bold text-white">
+                  <div className="flex justify-between pt-0.5 border-t border-neutral-800 text-xs font-bold text-white">
                     <span>TOTAL:</span>
-                    <span className="font-mono text-base text-emerald-400">
+                    <span className="font-mono text-sm text-emerald-400">
                       {formatCurrency(Math.max(0, selectedOrderForPrint.subtotal - (selectedOrderForPrint.discountAmount || 0)))}
                     </span>
                   </div>
-                  <div className="flex justify-between text-[11px] text-neutral-400">
+                  <div className="flex justify-between text-[10px] text-neutral-400">
                     <span>Anticipo Pagado:</span>
                     <span className="font-mono">
                       -{formatUSD(selectedOrderForPrint.amountPaid)}
@@ -1190,21 +1201,26 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
               </div>
 
               {/* Signatures */}
-              <div className="grid grid-cols-2 gap-8 pt-8 border-t border-neutral-800 text-center">
-                <div className="pt-8 border-t border-neutral-700">
-                  <span className="text-[10px] text-neutral-400 block uppercase font-mono">
+              <div className="grid grid-cols-2 gap-6 pt-4 border-t border-neutral-800 text-center">
+                <div className="pt-4 border-t border-neutral-700">
+                  <span className="text-[9px] text-neutral-400 block uppercase font-mono">
                     Mecánico Responsable
                   </span>
                   <span className="text-xs text-white font-medium">{selectedOrderForPrint.assignedTechnician}</span>
                 </div>
-                <div className="pt-8 border-t border-neutral-700">
-                  <span className="text-[10px] text-neutral-400 block uppercase font-mono">
+                <div className="pt-4 border-t border-neutral-700">
+                  <span className="text-[9px] text-neutral-400 block uppercase font-mono">
                     Conformidad y Autorización del Cliente
                   </span>
                   <span className="text-xs text-white font-medium">
                     {selectedOrderForPrint.customerSignatureName || selectedOrderForPrint.clientName}
                   </span>
                 </div>
+              </div>
+
+              {/* Footer legal text */}
+              <div className="text-center pt-2 text-[9px] text-neutral-500 font-mono border-t border-neutral-800/60 print:border-neutral-300">
+                Documento Oficial · 1 Sola Copia para Control de Taller y Resguardo del Cliente · Validez Legal en El Salvador
               </div>
             </div>
           </div>
