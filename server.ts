@@ -628,6 +628,49 @@ app.post('/api/users/update', (req, res) => {
   }
 });
 
+app.post('/api/users/save', (req, res) => {
+  try {
+    const { user } = req.body;
+    if (!user || !user.id) {
+      return res.status(400).json({ success: false, error: 'Datos de usuario requeridos' });
+    }
+    const idx = state.users.findIndex(u => u.id === user.id);
+    if (idx >= 0) {
+      state.users[idx] = { ...state.users[idx], ...user };
+    } else {
+      state.users.push(user);
+    }
+    persistDatabaseState();
+    broadcastAll({
+      type: 'USER_UPDATED',
+      payload: { user: state.users.find(u => u.id === user.id) },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true, user: state.users.find(u => u.id === user.id) });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/users/delete', (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'ID de usuario requerido' });
+    }
+    state.users = state.users.filter(u => u.id !== id);
+    persistDatabaseState();
+    broadcastAll({
+      type: 'USER_DELETED',
+      payload: { userId: id },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true, id });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/api/work-orders/save', (req, res) => {
   try {
     const { order, notification } = req.body;
@@ -838,7 +881,7 @@ app.post('/api/sync', (req, res) => {
   try {
     const incoming = req.body;
     if (incoming && typeof incoming === 'object') {
-      const keys: (keyof WorkshopDatabaseState)[] = [
+      const arrayKeys: (keyof WorkshopDatabaseState)[] = [
         'clients',
         'parts',
         'appointments',
@@ -849,17 +892,28 @@ app.post('/api/sync', (req, res) => {
         'mechanicNotifications',
       ];
 
-      for (const k of keys) {
+      for (const k of arrayKeys) {
         if (Array.isArray(incoming[k])) {
-          // Protect staff accounts from accidental empty payload
-          if (k === 'users' && incoming[k].length === 0 && state.users.length > 0) {
-            continue;
+          const currentArr = Array.isArray((state as any)[k]) ? (state as any)[k] : [];
+          if (currentArr.length === 0) {
+            // Server was empty for this table (e.g. freshly started container) -> populate from incoming
+            (state as any)[k] = incoming[k];
+          } else if (incoming[k].length > 0) {
+            // Server already has records -> merge by ID non-destructively
+            const mergedMap = new Map<string, any>();
+            currentArr.forEach((item: any) => {
+              if (item && item.id) mergedMap.set(item.id, item);
+            });
+            incoming[k].forEach((item: any) => {
+              if (item && item.id) {
+                const existing = mergedMap.get(item.id);
+                mergedMap.set(item.id, existing ? { ...existing, ...item } : item);
+              }
+            });
+            (state as any)[k] = Array.from(mergedMap.values());
           }
-          (state as any)[k] = incoming[k];
         }
       }
-
-      state.lastUpdated = new Date().toISOString();
       persistDatabaseState();
       broadcastAll({
         type: 'STATE_SYNCED',
@@ -1060,7 +1114,17 @@ async function startServer() {
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        watch: {
+          ignored: [
+            '**/workshop_database.json',
+            '**/*.tmp.*',
+            '**/backups/**',
+            '**/data/**',
+          ],
+        },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);

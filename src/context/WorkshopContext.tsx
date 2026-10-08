@@ -316,6 +316,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Guardado persistente automático e inmediato en la base de datos del servidor (/api/sync)
     // SÓLO cuando el usuario haya realizado una modificación real para evitar sobrescribir con valores por defecto
     if (hasUserMutatedRef.current) {
+      hasUserMutatedRef.current = false;
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
       syncTimerRef.current = setTimeout(() => {
         fetch('/api/sync', {
@@ -400,7 +401,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (client) {
           setClients(prev => [client, ...prev.filter(c => c.id !== client.id)]);
         }
-        triggerCloudSync();
         break;
       }
       case 'CLIENT_UPDATED': {
@@ -408,7 +408,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (client) {
           setClients(prev => prev.map(c => (c.id === client.id ? client : c)));
         }
-        triggerCloudSync();
         break;
       }
       case 'CLIENT_DELETED': {
@@ -416,7 +415,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (clientId) {
           setClients(prev => prev.filter(c => c.id !== clientId));
         }
-        triggerCloudSync();
         break;
       }
 
@@ -426,7 +424,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (part) {
           setParts(prev => [part, ...prev.filter(p => p.id !== part.id)]);
         }
-        triggerCloudSync();
         break;
       }
       case 'PART_UPDATED': {
@@ -434,7 +431,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (part) {
           setParts(prev => prev.map(p => (p.id === part.id ? part : p)));
         }
-        triggerCloudSync();
         break;
       }
       case 'PART_DELETED': {
@@ -442,7 +438,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (partId) {
           setParts(prev => prev.filter(p => p.id !== partId));
         }
-        triggerCloudSync();
         break;
       }
       case 'PART_STOCK_ADJUSTED': {
@@ -452,7 +447,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             prev.map(p => (p.id === id ? { ...p, stockQuantity: Math.max(0, p.stockQuantity + delta) } : p))
           );
         }
-        triggerCloudSync();
         break;
       }
 
@@ -462,7 +456,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (appointment) {
           setAppointments(prev => [appointment, ...prev.filter(a => a.id !== appointment.id)]);
         }
-        triggerCloudSync();
         break;
       }
       case 'APPOINTMENT_UPDATED': {
@@ -470,7 +463,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (appointment) {
           setAppointments(prev => prev.map(a => (a.id === appointment.id ? appointment : a)));
         }
-        triggerCloudSync();
         break;
       }
       case 'APPOINTMENT_DELETED': {
@@ -478,7 +470,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (appointmentId) {
           setAppointments(prev => prev.filter(a => a.id !== appointmentId));
         }
-        triggerCloudSync();
         break;
       }
 
@@ -488,7 +479,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (budget) {
           setBudgets(prev => [budget, ...prev.filter(b => b.id !== budget.id)]);
         }
-        triggerCloudSync();
         break;
       }
       case 'BUDGET_UPDATED': {
@@ -496,7 +486,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (budget) {
           setBudgets(prev => prev.map(b => (b.id === budget.id ? budget : b)));
         }
-        triggerCloudSync();
         break;
       }
       case 'BUDGET_DELETED': {
@@ -504,7 +493,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (budgetId) {
           setBudgets(prev => prev.filter(b => b.id !== budgetId));
         }
-        triggerCloudSync();
         break;
       }
 
@@ -527,7 +515,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setActiveAlertToast(notification);
           }
         }
-        triggerCloudSync();
         break;
       }
 
@@ -536,7 +523,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (order) {
           setWorkOrders(prev => prev.map(o => (o.id === order.id ? order : o)));
         }
-        triggerCloudSync();
         break;
       }
 
@@ -554,7 +540,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setActiveAlertToast(notification);
           }
         }
-        triggerCloudSync();
         break;
       }
 
@@ -563,7 +548,6 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (otId) {
           setWorkOrders(prev => prev.filter(o => o.id !== otId));
         }
-        triggerCloudSync();
         break;
       }
 
@@ -571,7 +555,12 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       case 'USER_UPDATED': {
         const { user } = data.payload;
         if (user) {
-          setUsers(prev => prev.map(u => (u.id === user.id ? user : u)));
+          setUsers(prev => {
+            const exists = prev.some(u => u.id === user.id);
+            const next = exists ? prev.map(u => (u.id === user.id ? user : u)) : [...prev, user];
+            try { localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(next)); } catch {}
+            return next;
+          });
           if (currentUser?.id === user.id) {
             setCurrentUser(user);
           }
@@ -583,7 +572,12 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       case 'USER_CREATED': {
         const { user } = data.payload;
         if (user) {
-          setUsers(prev => (prev.some(u => u.id === user.id) ? prev : [...prev, user]));
+          setUsers(prev => {
+            if (prev.some(u => u.id === user.id)) return prev;
+            const next = [...prev, user];
+            try { localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(next)); } catch {}
+            return next;
+          });
         }
         break;
       }
@@ -592,7 +586,14 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       case 'USER_DELETED': {
         const { userId } = data.payload;
         if (userId) {
-          setUsers(prev => prev.filter(u => u.id !== userId));
+          setUsers(prev => {
+            const next = prev.filter(u => u.id !== userId);
+            try { localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(next)); } catch {}
+            return next;
+          });
+          if (currentUser?.id === userId) {
+            setCurrentUser(null);
+          }
         }
         break;
       }
@@ -695,20 +696,104 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (res && res.success && res.data) {
           if (res.connectedClients) setConnectedClients(res.connectedClients);
           const p = res.data;
-          if (Array.isArray(p.clients)) setClients(p.clients);
-          if (Array.isArray(p.parts)) setParts(p.parts);
-          if (Array.isArray(p.appointments)) setAppointments(p.appointments);
-          if (Array.isArray(p.budgets)) setBudgets(p.budgets);
-          if (Array.isArray(p.workOrders)) setWorkOrders(p.workOrders);
-          if (Array.isArray(p.users) && p.users.length > 0) setUsers(p.users);
-          if (Array.isArray(p.mechanicNotifications)) setMechanicNotifications(p.mechanicNotifications);
-          isInitializedFromServerRef.current = true;
-          // Sync to local cache
+
+          // Retrieve cached local data to prevent cold server restarts or empty payloads from wiping user data
+          let localClients: Client[] = [];
+          let localWorkOrders: WorkOrder[] = [];
+          let localParts: Part[] = [];
+          let localAppointments: Appointment[] = [];
+          let localBudgets: Budget[] = [];
+          let localUsers: User[] = [];
+          let localNotifs: NotificationLog[] = [];
+          let localMechNotifs: MechanicAssignmentNotification[] = [];
+
           try {
-            if (Array.isArray(p.users)) localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(p.users));
-            if (Array.isArray(p.clients)) localStorage.setItem(`${STORAGE_KEY}_clients`, JSON.stringify(p.clients));
-            if (Array.isArray(p.workOrders)) localStorage.setItem(`${STORAGE_KEY}_workOrders`, JSON.stringify(p.workOrders));
+            const sc = localStorage.getItem(`${STORAGE_KEY}_clients`);
+            if (sc) localClients = JSON.parse(sc);
+            const swo = localStorage.getItem(`${STORAGE_KEY}_workOrders`);
+            if (swo) localWorkOrders = JSON.parse(swo);
+            const sp = localStorage.getItem(`${STORAGE_KEY}_parts`);
+            if (sp) localParts = JSON.parse(sp);
+            const sa = localStorage.getItem(`${STORAGE_KEY}_appointments`);
+            if (sa) localAppointments = JSON.parse(sa);
+            const sb = localStorage.getItem(`${STORAGE_KEY}_budgets`);
+            if (sb) localBudgets = JSON.parse(sb);
+            const su = localStorage.getItem(`${STORAGE_KEY}_users`);
+            if (su) localUsers = JSON.parse(su);
+            const sn = localStorage.getItem(`${STORAGE_KEY}_notifications`);
+            if (sn) localNotifs = JSON.parse(sn);
+            const smn = localStorage.getItem(`${STORAGE_KEY}_mechanicNotifications`);
+            if (smn) localMechNotifs = JSON.parse(smn);
           } catch {}
+
+          // Prioritize server data if server has records. If server was wiped/restarted with 0 records, PRESERVE local cache!
+          const activeClients = Array.isArray(p.clients) && p.clients.length > 0 ? p.clients : (localClients.length > 0 ? localClients : (Array.isArray(p.clients) ? p.clients : []));
+          const activeWorkOrders = Array.isArray(p.workOrders) && p.workOrders.length > 0 ? p.workOrders : (localWorkOrders.length > 0 ? localWorkOrders : (Array.isArray(p.workOrders) ? p.workOrders : []));
+          const activeParts = Array.isArray(p.parts) && p.parts.length > 0 ? p.parts : (localParts.length > 0 ? localParts : (Array.isArray(p.parts) ? p.parts : []));
+          const activeAppointments = Array.isArray(p.appointments) && p.appointments.length > 0 ? p.appointments : (localAppointments.length > 0 ? localAppointments : (Array.isArray(p.appointments) ? p.appointments : []));
+          const activeBudgets = Array.isArray(p.budgets) && p.budgets.length > 0 ? p.budgets : (localBudgets.length > 0 ? localBudgets : (Array.isArray(p.budgets) ? p.budgets : []));
+          const activeNotifs = Array.isArray(p.notifications) && p.notifications.length > 0 ? p.notifications : (localNotifs.length > 0 ? localNotifs : (Array.isArray(p.notifications) ? p.notifications : []));
+          const activeMechNotifs = Array.isArray(p.mechanicNotifications) && p.mechanicNotifications.length > 0 ? p.mechanicNotifications : (localMechNotifs.length > 0 ? localMechNotifs : (Array.isArray(p.mechanicNotifications) ? p.mechanicNotifications : []));
+
+          // For users: if local users list was customized (mechanics added or deleted), preserve it over server clean default
+          let activeUsers = Array.isArray(p.users) && p.users.length > 0 ? p.users : [...INITIAL_USERS];
+          if (localUsers.length > 0 && Array.isArray(p.users)) {
+            const serverUserIds = p.users.map((u: any) => u.id).sort().join(',');
+            const defaultUserIds = INITIAL_USERS.map(u => u.id).sort().join(',');
+            const localUserIds = localUsers.map(u => u.id).sort().join(',');
+            if (serverUserIds === defaultUserIds && localUserIds !== defaultUserIds) {
+              activeUsers = localUsers;
+            }
+          }
+
+          setClients(activeClients);
+          setParts(activeParts);
+          setAppointments(activeAppointments);
+          setBudgets(activeBudgets);
+          setWorkOrders(activeWorkOrders);
+          setUsers(activeUsers);
+          setNotifications(activeNotifs);
+          setMechanicNotifications(activeMechNotifs);
+          isInitializedFromServerRef.current = true;
+
+          // Always write full synchronized state to localStorage cache
+          try {
+            localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(activeUsers));
+            localStorage.setItem(`${STORAGE_KEY}_clients`, JSON.stringify(activeClients));
+            localStorage.setItem(`${STORAGE_KEY}_parts`, JSON.stringify(activeParts));
+            localStorage.setItem(`${STORAGE_KEY}_appointments`, JSON.stringify(activeAppointments));
+            localStorage.setItem(`${STORAGE_KEY}_budgets`, JSON.stringify(activeBudgets));
+            localStorage.setItem(`${STORAGE_KEY}_workOrders`, JSON.stringify(activeWorkOrders));
+            localStorage.setItem(`${STORAGE_KEY}_notifications`, JSON.stringify(activeNotifs));
+            localStorage.setItem(`${STORAGE_KEY}_mechanicNotifications`, JSON.stringify(activeMechNotifs));
+          } catch {}
+
+          // If local data rescued an empty server state, re-hydrate server immediately so database is persistent!
+          const needsServerSync = (
+            (activeClients.length > 0 && (!p.clients || p.clients.length === 0)) ||
+            (activeWorkOrders.length > 0 && (!p.workOrders || p.workOrders.length === 0)) ||
+            (activeParts.length > 0 && (!p.parts || p.parts.length === 0)) ||
+            (activeAppointments.length > 0 && (!p.appointments || p.appointments.length === 0)) ||
+            (activeBudgets.length > 0 && (!p.budgets || p.budgets.length === 0)) ||
+            (activeUsers.length !== (p.users ? p.users.length : 0))
+          );
+
+          if (needsServerSync) {
+            fetch('/api/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                clients: activeClients,
+                parts: activeParts,
+                appointments: activeAppointments,
+                budgets: activeBudgets,
+                workOrders: activeWorkOrders,
+                notifications: activeNotifs,
+                mechanicNotifications: activeMechNotifs,
+                users: activeUsers,
+              }),
+            }).catch(err => console.warn('Re-hydration sync notice:', err));
+          }
         }
       })
       .catch(err => {
@@ -1474,7 +1559,12 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       id: `usr-${Date.now()}`,
       createdAt: new Date().toISOString().split('T')[0],
     };
-    setUsers(prev => [...prev, newUser]);
+    const nextUsers = [...users, newUser];
+    setUsers(nextUsers);
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(nextUsers));
+    } catch {}
+
     fetch('/api/users/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1493,19 +1583,22 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return;
     }
     let updatedUser: User | null = null;
-    setUsers(prev =>
-      prev.map(u => {
-        if (u.id === id) {
-          const updated = { ...u, ...updates };
-          if (currentUser?.id === id) {
-            setCurrentUser(updated);
-          }
-          updatedUser = updated;
-          return updated;
+    const nextUsers = users.map(u => {
+      if (u.id === id) {
+        const updated = { ...u, ...updates };
+        if (currentUser?.id === id) {
+          setCurrentUser(updated);
         }
-        return u;
-      })
-    );
+        updatedUser = updated;
+        return updated;
+      }
+      return u;
+    });
+    setUsers(nextUsers);
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(nextUsers));
+    } catch {}
+
     if (updatedUser) {
       fetch('/api/users/update', {
         method: 'POST',
@@ -1522,10 +1615,15 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       alert('🔒 Acción Bloqueada: Tu rol de usuario no tiene permiso para administrar ni eliminar mecánicos (canManageMechanics).');
       return;
     }
-    setUsers(prev => prev.filter(u => u.id !== id));
+    const nextUsers = users.filter(u => u.id !== id);
+    setUsers(nextUsers);
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(nextUsers));
+    } catch {}
+
     if (currentUser?.id === id) {
       // If current user is deleted, switch back to Boss or null
-      const remainingBoss = users.find(u => u.role === 'boss' && u.id !== id);
+      const remainingBoss = nextUsers.find(u => u.role === 'boss');
       setCurrentUser(remainingBoss || null);
     }
     fetch('/api/users/delete', {
@@ -1543,25 +1641,28 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return;
     }
     let updatedUser: User | null = null;
-    setUsers(prev =>
-      prev.map(u => {
-        if (u.id === userId) {
-          const updated = {
-            ...u,
-            permissions: {
-              ...u.permissions,
-              ...permissions,
-            },
-          };
-          if (currentUser?.id === userId) {
-            setCurrentUser(updated);
-          }
-          updatedUser = updated;
-          return updated;
+    const nextUsers = users.map(u => {
+      if (u.id === userId) {
+        const updated = {
+          ...u,
+          permissions: {
+            ...u.permissions,
+            ...permissions,
+          },
+        };
+        if (currentUser?.id === userId) {
+          setCurrentUser(updated);
         }
-        return u;
-      })
-    );
+        updatedUser = updated;
+        return updated;
+      }
+      return u;
+    });
+    setUsers(nextUsers);
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(nextUsers));
+    } catch {}
+
     if (updatedUser) {
       fetch('/api/users/update', {
         method: 'POST',
@@ -1591,6 +1692,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       budgets,
       workOrders,
       notifications,
+      mechanicNotifications,
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
