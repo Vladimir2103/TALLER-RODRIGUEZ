@@ -71,6 +71,7 @@ interface WorkshopDatabaseState {
   notifications: any[];
   users: any[];
   mechanicNotifications: any[];
+  workshopContact?: any;
   lastUpdated: string;
 }
 
@@ -152,6 +153,7 @@ function loadDatabaseState(): WorkshopDatabaseState {
           notifications: Array.isArray(data.notifications) ? data.notifications : [],
           users: loadedUsers,
           mechanicNotifications: Array.isArray(data.mechanicNotifications) ? data.mechanicNotifications : [],
+          workshopContact: data.workshopContact || null,
           lastUpdated: data.lastUpdated || new Date().toISOString(),
         };
       }
@@ -180,6 +182,7 @@ function loadDatabaseState(): WorkshopDatabaseState {
           notifications: Array.isArray(data.notifications) ? data.notifications : [],
           users: loadedUsers,
           mechanicNotifications: Array.isArray(data.mechanicNotifications) ? data.mechanicNotifications : [],
+          workshopContact: data.workshopContact || null,
           lastUpdated: data.lastUpdated || new Date().toISOString(),
         };
       }
@@ -947,6 +950,9 @@ app.post('/api/sync', (req, res) => {
           }
         }
       }
+      if (incoming.workshopContact && typeof incoming.workshopContact === 'object') {
+        state.workshopContact = incoming.workshopContact;
+      }
       persistDatabaseState(true);
       broadcastAll({
         type: 'STATE_SYNCED',
@@ -957,6 +963,29 @@ app.post('/api/sync', (req, res) => {
     res.json({ success: true, timestamp: state.lastUpdated });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Endpoint to get and update official workshop contact (Jefe de Taller)
+app.get('/api/workshop-contact', (_req, res) => {
+  res.json({ success: true, workshopContact: state.workshopContact || null });
+});
+
+app.post('/api/workshop-contact', (req, res) => {
+  try {
+    const { workshopContact } = req.body;
+    if (workshopContact && typeof workshopContact === 'object') {
+      state.workshopContact = workshopContact;
+      persistDatabaseState(true);
+      broadcastAll({
+        type: 'WORKSHOP_CONTACT_UPDATED',
+        payload: { workshopContact },
+        connectedClients: wss.clients.size,
+      });
+    }
+    res.json({ success: true, workshopContact: state.workshopContact });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

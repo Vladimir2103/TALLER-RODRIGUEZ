@@ -219,4 +219,16 @@ export interface MechanicAssignmentNotification {
   read: boolean;
 }
 
+export interface WorkshopContact {
+  name: string;
+  legalName: string;
+  bossName: string;
+  phone: string;
+  email: string;
+  whatsappNumber: string;
+  address: string;
+  taxId: string;
+  taxNRC: string;
+}
+
 

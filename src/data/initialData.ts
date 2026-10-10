@@ -47,16 +47,17 @@ export const WORKSHOP_CONFIG = {
   city: 'Usulután',
   country: 'El Salvador',
   developer: 'VlaSwink51',
-  phone: '+503 2260-9012',
-  whatsappNumber: '50375609012',
-  email: 'contacto@taller-rodriguez.com',
+  bossName: 'Edwin Rodríguez',
+  phone: '+503 6427-2531',
+  whatsappNumber: '50364272531',
+  email: 'edwinrodriguez@taller-rodriguez.com',
   taxId: 'NIT: 0614-141098-102-1',
   taxNRC: 'NRC: 298104-5',
   currency: 'USD',
   currencySymbol: '$',
-  defaultLaborRate: 35, // USD precio base de mano de obra total (El Salvador)
+  defaultLaborRate: 35, // USD precio base de mano de obra total fija (sin cobro por hora)
   defaultTaxPercent: 0,
   technicians: [
-    'VlaSwink51 (Administrador)',
+    'Edwin Rodríguez (Jefe de Taller)',
   ],
 };
