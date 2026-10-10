@@ -146,8 +146,8 @@ export interface WorkOrder {
   estimatedCompletionDate: string;
   completedDate?: string;
   partsUsed: WorkOrderPart[];
-  laborHours: number;
-  laborRatePerHour: number;
+  laborHours?: number;
+  laborRatePerHour?: number;
   laborTotal: number;
   subtotal: number;
   taxPercent: number;

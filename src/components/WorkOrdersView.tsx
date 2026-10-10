@@ -102,8 +102,7 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
   const [assignedTechnician, setAssignedTechnician] = useState(
     prefilledAppointment?.assignedTechnician || techList[0]
   );
-  const [laborHours, setLaborHours] = useState<number>(2.5);
-  const [laborRatePerHour, setLaborRatePerHour] = useState<number>(WORKSHOP_CONFIG.defaultLaborRate);
+  const [laborTotal, setLaborTotal] = useState<number>(WORKSHOP_CONFIG.defaultLaborRate);
   const [paymentStatus, setPaymentStatus] = useState<'pendiente' | 'anticipo' | 'pagado'>('pendiente');
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [technicianNotes, setTechnicianNotes] = useState('');
@@ -201,8 +200,7 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
       startDate: new Date().toISOString().replace('T', ' ').slice(0, 16),
       estimatedCompletionDate: new Date(Date.now() + 86400000).toISOString().replace('T', ' ').slice(0, 16),
       partsUsed,
-      laborHours,
-      laborRatePerHour,
+      laborTotal: Number(laborTotal) || 0,
       taxPercent: 0,
       discountAmount: 0,
       paymentStatus,
@@ -919,35 +917,34 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                 ))}
               </div>
 
-              {/* Labor & Payment */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              {/* Labor Total & Payment */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-300 mb-1">Horas Mano de Obra</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    value={laborHours}
-                    onChange={e => setLaborHours(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-300 mb-1">Tarifa por Hora ($ USD)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={laborRatePerHour}
-                    onChange={e => setLaborRatePerHour(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white font-mono"
-                  />
+                  <label className="block text-xs font-semibold text-neutral-200 mb-1">
+                    Precio Mano de Obra Total ($ USD)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-mono text-xs">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={laborTotal}
+                      onChange={e => setLaborTotal(Number(e.target.value))}
+                      placeholder="Ej. 35.00"
+                      className="w-full pl-7 pr-3 py-2 bg-neutral-950 border border-neutral-800 focus:border-red-500 rounded-lg text-white font-mono text-sm focus:outline-none"
+                    />
+                  </div>
+                  <span className="text-[10px] text-neutral-500 mt-0.5 block">
+                    Precio fijo total por la mano de obra del servicio técnico
+                  </span>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-neutral-300 mb-1">Estado de Cobro</label>
                   <select
                     value={paymentStatus}
                     onChange={e => setPaymentStatus(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white"
+                    className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white text-sm"
                   >
                     <option value="pendiente">Pendiente</option>
                     <option value="anticipo">Anticipo Recibido</option>
@@ -1148,11 +1145,11 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                     <tr>
                       <td className="py-1 px-2 font-mono text-[10px] text-neutral-400">MO-TEC</td>
                       <td className="py-1 px-2 text-white font-medium">
-                        Mano de Obra Mecánica Calificada ({selectedOrderForPrint.laborHours} hrs)
+                        Mano de Obra Mecánica Calificada (Servicio Técnico Especializado)
                       </td>
-                      <td className="py-1 px-2 text-center font-mono">{selectedOrderForPrint.laborHours}</td>
+                      <td className="py-1 px-2 text-center font-mono text-neutral-400">1 serv.</td>
                       <td className="py-1 px-2 text-right font-mono text-neutral-400 tabular-nums">
-                        {formatUSD(selectedOrderForPrint.laborRatePerHour)}
+                        {formatUSD(selectedOrderForPrint.laborTotal)}
                       </td>
                       <td className="py-1 px-2 text-right font-mono text-white font-semibold tabular-nums">
                         {formatUSD(selectedOrderForPrint.laborTotal)}

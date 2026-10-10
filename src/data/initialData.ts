@@ -54,7 +54,7 @@ export const WORKSHOP_CONFIG = {
   taxNRC: 'NRC: 298104-5',
   currency: 'USD',
   currencySymbol: '$',
-  defaultLaborRate: 35, // USD por hora (El Salvador)
+  defaultLaborRate: 35, // USD precio base de mano de obra total (El Salvador)
   defaultTaxPercent: 0,
   technicians: [
     'VlaSwink51 (Administrador)',

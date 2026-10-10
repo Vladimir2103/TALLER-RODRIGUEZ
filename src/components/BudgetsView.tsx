@@ -122,7 +122,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
         {
           id: `bi-${Date.now()}`,
           type: 'mano_de_obra',
-          description: 'Mano de obra técnica por horas',
+          description: 'Mano de obra especializada / Servicio técnico',
           quantity: 1,
           unitPrice: WORKSHOP_CONFIG.defaultLaborRate,
           total: WORKSHOP_CONFIG.defaultLaborRate,
@@ -591,19 +591,21 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                       <div className="grid grid-cols-3 gap-2 pt-1">
                         <div>
                           <label className="text-[10px] text-neutral-400 block mb-0.5">
-                            {item.type === 'mano_de_obra' ? 'Horas' : 'Cantidad'}
+                            {item.type === 'mano_de_obra' ? 'Cant. Servicios' : 'Cantidad'}
                           </label>
                           <input
                             type="number"
-                            min="0.5"
-                            step="0.5"
+                            min="1"
+                            step="1"
                             value={item.quantity}
                             onChange={e => handleUpdateItem(idx, { quantity: Number(e.target.value) })}
                             className="w-full px-2 py-1 bg-neutral-900 border border-neutral-800 rounded-md text-white font-mono text-xs focus:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] text-neutral-400 block mb-0.5">Precio Unitario ($ USD)</label>
+                          <label className="text-[10px] text-neutral-400 block mb-0.5">
+                            {item.type === 'mano_de_obra' ? 'Precio Mano de Obra ($)' : 'Precio Unitario ($ USD)'}
+                          </label>
                           <input
                             type="number"
                             min="0"

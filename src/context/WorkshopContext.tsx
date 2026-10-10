@@ -75,7 +75,7 @@ interface WorkshopContextType {
   deleteBudget: (id: string) => void;
   convertBudgetToWorkOrder: (budgetId: string) => WorkOrder | null;
   // Work Orders & Mechanic Assignment
-  createWorkOrder: (order: Omit<WorkOrder, 'id' | 'otNumber' | 'createdAt' | 'subtotal' | 'taxAmount' | 'laborTotal' | 'total'>) => WorkOrder;
+  createWorkOrder: (order: Omit<WorkOrder, 'id' | 'otNumber' | 'createdAt' | 'subtotal' | 'taxAmount' | 'total'> & { laborTotal?: number }) => WorkOrder;
   updateWorkOrder: (id: string, updates: Partial<WorkOrder>) => void;
   updateWorkOrderStage: (id: string, stage: WorkOrderStage) => void;
   deleteWorkOrder: (id: string) => void;
@@ -1253,8 +1253,8 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     const laborItems = budget.items.filter(i => i.type === 'mano_de_obra');
-    const laborHours = laborItems.reduce((sum, i) => sum + i.quantity, 0) || 2;
-    const laborTotal = laborItems.reduce((sum, i) => sum + i.total, 0) || 900;
+    const laborHours = laborItems.reduce((sum, i) => sum + i.quantity, 0) || 1;
+    const laborTotal = laborItems.reduce((sum, i) => sum + i.total, 0) || WORKSHOP_CONFIG.defaultLaborRate;
 
     const otCount = workOrders.length + 145;
     const otNumber = `OT-2026-${String(otCount).padStart(4, '0')}`;
@@ -1311,14 +1311,16 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Work Orders Management
   const createWorkOrder = (
-    data: Omit<WorkOrder, 'id' | 'otNumber' | 'createdAt' | 'subtotal' | 'taxAmount' | 'laborTotal' | 'total'>
+    data: Omit<WorkOrder, 'id' | 'otNumber' | 'createdAt' | 'subtotal' | 'taxAmount' | 'total'> & { laborTotal?: number }
   ): WorkOrder => {
     if (!hasPermission('canManageWorkOrders')) {
       alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para crear órdenes de trabajo (canManageWorkOrders).');
       throw new Error('Unauthorized: canManageWorkOrders required');
     }
     const partsTotal = data.partsUsed.reduce((sum, p) => sum + p.total, 0);
-    const laborTotal = (data.laborHours || 0) * (data.laborRatePerHour || WORKSHOP_CONFIG.defaultLaborRate);
+    const laborTotal = typeof data.laborTotal === 'number'
+      ? data.laborTotal
+      : ((data.laborHours || 0) * (data.laborRatePerHour || WORKSHOP_CONFIG.defaultLaborRate));
     const subtotal = partsTotal + laborTotal;
     const taxAmount = (subtotal * (data.taxPercent || WORKSHOP_CONFIG.defaultTaxPercent)) / 100;
     const total = Math.max(0, subtotal + taxAmount - (data.discountAmount || 0));
@@ -1400,7 +1402,9 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (order.id !== id) return order;
         const merged = { ...order, ...updates };
         const partsTotal = merged.partsUsed.reduce((sum, p) => sum + p.total, 0);
-        const laborTotal = (merged.laborHours || 0) * (merged.laborRatePerHour || WORKSHOP_CONFIG.defaultLaborRate);
+        const laborTotal = typeof merged.laborTotal === 'number'
+          ? merged.laborTotal
+          : ((merged.laborHours || 0) * (merged.laborRatePerHour || WORKSHOP_CONFIG.defaultLaborRate));
         const subtotal = partsTotal + laborTotal;
         const taxAmount = (subtotal * (merged.taxPercent || WORKSHOP_CONFIG.defaultTaxPercent)) / 100;
         const total = Math.max(0, subtotal + taxAmount - (merged.discountAmount || 0));
