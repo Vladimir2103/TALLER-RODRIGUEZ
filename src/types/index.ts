@@ -214,7 +214,7 @@ export interface MechanicAssignmentNotification {
   vehicleModel: string;
   reportedFault: string;
   priority: WorkOrderPriority;
-  assignedBy: string; // e.g. "Carlos Rodríguez (Jefe de Taller)"
+  assignedBy: string; // e.g. "VlaSwink51 (Administrador)"
   createdAt: string;
   read: boolean;
 }

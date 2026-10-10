@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWorkshop } from '../context/WorkshopContext';
-import { Client, Vehicle, WorkOrder } from '../types';
+import { Client, Vehicle, WorkOrder, WorkOrderStage } from '../types';
 import { formatCurrency, formatUSD } from '../utils/format';
 import {
   Users,
@@ -22,17 +22,25 @@ import {
   X,
   PlusCircle,
   FileText,
+  CheckCircle2,
+  Filter,
+  ArrowUpRight,
+  Printer,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface ClientsHistoryViewProps {
   onOpenWhatsApp: (phone: string, clientName: string, template: any, data: any) => void;
   onNewWorkOrderForVehicle?: (client: Client, vehicle: Vehicle) => void;
+  onNavigateToOT?: (otId?: string) => void;
+  initialViewMode?: 'clients' | 'history';
 }
 
 export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
   onOpenWhatsApp,
   onNewWorkOrderForVehicle,
+  onNavigateToOT,
+  initialViewMode = 'clients',
 }) => {
   const {
     clients,
@@ -43,6 +51,16 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
     hasPermission,
     currentUser,
   } = useWorkshop();
+
+  const [activeViewMode, setActiveViewMode] = useState<'clients' | 'history'>(initialViewMode);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyStageFilter, setHistoryStageFilter] = useState<string>('all');
+
+  useEffect(() => {
+    if (initialViewMode) {
+      setActiveViewMode(initialViewMode);
+    }
+  }, [initialViewMode]);
 
   const canManageClients = hasPermission('canManageClients');
   const canDelete = hasPermission('canDeleteRecords');
@@ -262,27 +280,57 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-neutral-800">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <History className="w-6 h-6 text-red-500" />
-            <span>Historial de Reparaciones & Clientes</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-neutral-400">
-            Expediente automotriz por cliente, trazabilidad de piezas cambiadas y notificaciones WhatsApp
-          </p>
+      <div className="space-y-3 pb-2 border-b border-neutral-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+              <History className="w-6 h-6 text-red-500" />
+              <span>Clientes & Historial del Taller</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-neutral-400">
+              Expediente automotriz por cliente, parque vehicular y registro cronológico de todas las reparaciones
+            </p>
+          </div>
+
+          <button
+            onClick={() => setIsNewClientModalOpen(true)}
+            className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950 self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Registrar Nuevo Cliente</span>
+          </button>
         </div>
 
-        <button
-          onClick={() => setIsNewClientModalOpen(true)}
-          className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Registrar Nuevo Cliente</span>
-        </button>
+        {/* View Mode Switcher Pills */}
+        <div className="flex items-center gap-2 pt-1">
+          <button
+            onClick={() => setActiveViewMode('clients')}
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+              activeViewMode === 'clients'
+                ? 'bg-red-600 text-white shadow-lg shadow-red-950/60'
+                : 'bg-neutral-900 text-neutral-400 hover:text-white hover:bg-neutral-800 border border-neutral-800'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Directorio de Clientes ({clients.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveViewMode('history')}
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+              activeViewMode === 'history'
+                ? 'bg-red-600 text-white shadow-lg shadow-red-950/60'
+                : 'bg-neutral-900 text-neutral-400 hover:text-white hover:bg-neutral-800 border border-neutral-800'
+            }`}
+          >
+            <History className="w-4 h-4" />
+            <span>Historial de Reparaciones ({workOrders.length})</span>
+          </button>
+        </div>
       </div>
 
-      {/* Main 2-Column Dossier Workspace */}
+      {/* Main 2-Column Dossier Workspace: Clientes */}
+      {activeViewMode === 'clients' && (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Client Directory List (4 cols) */}
         <div className="lg:col-span-4 bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden flex flex-col">
@@ -615,6 +663,253 @@ export const ClientsHistoryView: React.FC<ClientsHistoryViewProps> = ({
           </div>
         )}
       </div>
+      )}
+
+      {/* VIEW MODE 2: Historial General de Reparaciones del Taller */}
+      {activeViewMode === 'history' && (
+        <div className="space-y-5">
+          {/* Summary KPIs */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-4 bg-neutral-900 border border-neutral-800 rounded-xl">
+              <span className="text-[10px] text-neutral-400 uppercase font-mono block">
+                Total Servicios Realizados
+              </span>
+              <span className="text-xl sm:text-2xl font-bold font-mono text-white mt-1 block">
+                {workOrders.length}
+              </span>
+            </div>
+            <div className="p-4 bg-neutral-900 border border-neutral-800 rounded-xl">
+              <span className="text-[10px] text-neutral-400 uppercase font-mono block">
+                Entregados & Finalizados
+              </span>
+              <span className="text-xl sm:text-2xl font-bold font-mono text-emerald-400 mt-1 block">
+                {workOrders.filter(o => o.stage === 'entregado').length}
+              </span>
+            </div>
+            <div className="p-4 bg-neutral-900 border border-neutral-800 rounded-xl">
+              <span className="text-[10px] text-neutral-400 uppercase font-mono block">
+                En Proceso Actual
+              </span>
+              <span className="text-xl sm:text-2xl font-bold font-mono text-amber-400 mt-1 block">
+                {workOrders.filter(o => o.stage !== 'entregado').length}
+              </span>
+            </div>
+            <div className="p-4 bg-neutral-900 border border-neutral-800 rounded-xl">
+              <span className="text-[10px] text-neutral-400 uppercase font-mono block">
+                Facturación Histórica
+              </span>
+              <span className="text-xl sm:text-2xl font-bold font-mono text-emerald-400 mt-1 block truncate">
+                {formatUSD(workOrders.reduce((sum, o) => sum + (Number(o.subtotal) || 0), 0))}
+              </span>
+            </div>
+          </div>
+
+          {/* Search & Filters */}
+          <div className="p-3 bg-neutral-900 border border-neutral-800 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+              <input
+                type="text"
+                placeholder="Buscar por placa, cliente, teléfono, número de OT o falla..."
+                value={historySearch}
+                onChange={e => setHistorySearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-red-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Filter className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+              <select
+                value={historyStageFilter}
+                onChange={e => setHistoryStageFilter(e.target.value)}
+                className="px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-xs text-neutral-200 focus:outline-none focus:border-red-500 cursor-pointer"
+              >
+                <option value="all">Todas las Etapas ({workOrders.length})</option>
+                <option value="entregado">Entregados / Listos</option>
+                <option value="reparacion">En Reparación</option>
+                <option value="diagnostico">En Diagnóstico</option>
+                <option value="espera_repuestos">Espera Repuestos</option>
+                <option value="control_calidad">Control Calidad</option>
+              </select>
+            </div>
+          </div>
+
+          {/* History records list */}
+          {(() => {
+            const q = historySearch.toLowerCase().trim();
+            const filteredOrders = workOrders.filter(o => {
+              const matchesSearch =
+                !q ||
+                o.otNumber.toLowerCase().includes(q) ||
+                o.clientName.toLowerCase().includes(q) ||
+                o.vehiclePlate.toLowerCase().includes(q) ||
+                o.vehicleModel.toLowerCase().includes(q) ||
+                o.reportedFault.toLowerCase().includes(q) ||
+                o.assignedTechnician.toLowerCase().includes(q);
+
+              const matchesStage = historyStageFilter === 'all' || o.stage === historyStageFilter;
+              return matchesSearch && matchesStage;
+            });
+
+            if (filteredOrders.length === 0) {
+              return (
+                <div className="p-12 text-center text-xs text-neutral-500 bg-neutral-900 border border-neutral-800 rounded-xl space-y-2">
+                  <History className="w-8 h-8 mx-auto text-neutral-600 mb-2" />
+                  <p className="font-semibold text-neutral-300">No se encontraron reparaciones registradas</p>
+                  <p className="text-neutral-500 text-[11px]">
+                    {workOrders.length === 0
+                      ? 'Las reparaciones y órdenes que crees se registrarán automáticamente en este historial.'
+                      : 'Intenta con otro término de búsqueda o cambia el filtro de etapa.'}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-3">
+                {filteredOrders.map(order => (
+                  <div
+                    key={order.id}
+                    className="p-4 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl space-y-3 transition-colors"
+                  >
+                    {/* Header Row */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-800/80 pb-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono font-bold text-white text-sm bg-neutral-950 px-2.5 py-1 rounded-md border border-neutral-800">
+                          {order.otNumber}
+                        </span>
+                        <span className="font-mono text-xs text-amber-300 font-bold bg-neutral-950 px-2 py-0.5 rounded border border-neutral-800">
+                          🚗 {order.vehiclePlate}
+                        </span>
+                        <span className="text-xs font-semibold text-white">
+                          {order.vehicleBrand} {order.vehicleModel} ({order.vehicleYear})
+                        </span>
+                        <span className="text-neutral-500 text-xs">·</span>
+                        <span className="text-xs text-neutral-400">
+                          Ingreso: {order.startDate ? order.startDate.split(' ')[0] : 'N/A'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-start sm:self-auto">
+                        <span
+                          className={`text-[10px] font-semibold uppercase px-2.5 py-1 rounded-md border ${
+                            order.stage === 'entregado'
+                              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                              : 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                          }`}
+                        >
+                          {order.stage}
+                        </span>
+                        <span className="font-mono font-bold text-emerald-400 text-sm">
+                          {formatUSD(order.subtotal)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Middle Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                      <div className="p-2.5 bg-neutral-950 rounded-lg border border-neutral-850">
+                        <span className="text-[10px] text-neutral-500 uppercase font-mono block mb-1">
+                          Cliente & Contacto
+                        </span>
+                        <p className="font-semibold text-white">{order.clientName}</p>
+                        <p className="text-neutral-400 font-mono text-[11px] mt-0.5">Tel: {order.clientPhone}</p>
+                      </div>
+
+                      <div className="p-2.5 bg-neutral-950 rounded-lg border border-neutral-850">
+                        <span className="text-[10px] text-neutral-500 uppercase font-mono block mb-1">
+                          Falla Reportada & Diagnóstico
+                        </span>
+                        <p className="text-neutral-200 line-clamp-1">
+                          <strong>Reporte:</strong> {order.reportedFault}
+                        </p>
+                        {order.diagnosedProblem && (
+                          <p className="text-neutral-400 line-clamp-1 mt-0.5 text-[11px]">
+                            <strong>Diagnóstico:</strong> {order.diagnosedProblem}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="p-2.5 bg-neutral-950 rounded-lg border border-neutral-850">
+                        <span className="text-[10px] text-neutral-500 uppercase font-mono block mb-1">
+                          Responsable & Entrega
+                        </span>
+                        <p className="text-neutral-200">
+                          Técnico: <strong className="text-white">{order.assignedTechnician}</strong>
+                        </p>
+                        <p className="text-neutral-400 text-[11px] mt-0.5">
+                          {order.completedDate ? `Entregado: ${order.completedDate}` : `Estimado: ${order.estimatedCompletionDate || 'Pendiente'}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Parts list */}
+                    {order.partsUsed && order.partsUsed.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-[10px] text-neutral-500 font-mono uppercase mr-1">
+                          Repuestos:
+                        </span>
+                        {order.partsUsed.map((p, i) => (
+                          <span
+                            key={i}
+                            className="text-[11px] px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-neutral-300"
+                          >
+                            {p.name} (x{p.quantity}) · {formatUSD(p.total)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="flex items-center justify-between pt-2 border-t border-neutral-800 text-xs">
+                      <div className="flex items-center gap-2">
+                        {order.clientId && (
+                          <button
+                            onClick={() => {
+                              setSelectedClientId(order.clientId);
+                              setActiveViewMode('clients');
+                            }}
+                            className="px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-medium cursor-pointer transition-colors flex items-center gap-1"
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                            <span>Ver Expediente del Cliente</span>
+                          </button>
+                        )}
+
+                        {onNavigateToOT && (
+                          <button
+                            onClick={() => onNavigateToOT(order.id)}
+                            className="px-2.5 py-1 rounded bg-red-600/20 hover:bg-red-600/30 text-red-300 font-medium cursor-pointer transition-colors flex items-center gap-1 border border-red-500/30"
+                          >
+                            <Wrench className="w-3.5 h-3.5" />
+                            <span>Abrir Orden</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {canSendWhatsApp && order.clientPhone && (
+                        <button
+                          onClick={() =>
+                            onOpenWhatsApp(order.clientPhone, order.clientName, 'personalizado', {
+                              vehicle: `${order.vehicleBrand} ${order.vehicleModel}`,
+                              plate: order.vehiclePlate,
+                              otNumber: order.otNumber,
+                            })
+                          }
+                          className="px-2.5 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-medium cursor-pointer transition-colors flex items-center gap-1 border border-emerald-500/20"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>WhatsApp</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Modal: Registrar Nuevo Cliente */}
       {isNewClientModalOpen && (

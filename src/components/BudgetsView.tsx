@@ -870,7 +870,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                   <span className="text-[10px] text-neutral-400 block uppercase font-mono">
                     Por Taller Rodríguez Rodríguez
                   </span>
-                  <span className="text-xs text-white font-medium">Carlos Rodríguez - Jefe de Taller</span>
+                  <span className="text-xs text-white font-medium">VlaSwink51 - Administrador de Taller</span>
                 </div>
                 <div className="pt-8 border-t border-neutral-700">
                   <span className="text-[10px] text-neutral-400 block uppercase font-mono">

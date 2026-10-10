@@ -41,6 +41,7 @@ import {
   Shield,
   Crown,
   User,
+  Users,
   LogOut,
   ChevronDown,
   KeyRound,
@@ -119,7 +120,7 @@ function WorkshopApp() {
 
   // Navigation
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'appointments' | 'work_orders' | 'budgets' | 'inventory' | 'clients' | 'mechanics'
+    'dashboard' | 'appointments' | 'work_orders' | 'budgets' | 'inventory' | 'clients' | 'history' | 'mechanics'
   >('dashboard');
 
   // WhatsApp Dialog State
@@ -324,9 +325,21 @@ function WorkshopApp() {
                   ? 'text-white border-b-2 border-red-500'
                   : canManageClients ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-400'
               }`}
-              title={canManageClients ? 'Clientes & Historial' : 'Acceso restringido (requiere permiso canManageClients)'}
+              title={canManageClients ? 'Directorio de Clientes' : 'Acceso restringido (requiere permiso canManageClients)'}
             >
-              <span>Clientes & Historial</span>
+              <span>Clientes</span>
+              {!canManageClients && <Lock className="w-3 h-3 text-neutral-500" />}
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`transition-colors cursor-pointer py-1 flex items-center gap-1.5 ${
+                activeTab === 'history'
+                  ? 'text-white border-b-2 border-red-500'
+                  : canManageClients ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-400'
+              }`}
+              title={canManageClients ? 'Historial de Reparaciones del Taller' : 'Acceso restringido'}
+            >
+              <span>Historial</span>
               {!canManageClients && <Lock className="w-3 h-3 text-neutral-500" />}
             </button>
             {canManageStaff && (
@@ -559,7 +572,8 @@ function WorkshopApp() {
               { id: 'work_orders', label: 'Órdenes de Trabajo (OT)', icon: Wrench, permitted: canManageWorkOrders },
               { id: 'budgets', label: 'Presupuestos Automáticos', icon: FileText, permitted: canManageBudgets },
               { id: 'inventory', label: 'Inventario de Repuestos', icon: Package, permitted: canManageInventory },
-              { id: 'clients', label: 'Clientes & Historial', icon: History, permitted: canManageClients },
+              { id: 'clients', label: 'Directorio de Clientes', icon: Users, permitted: canManageClients },
+              { id: 'history', label: 'Historial de Reparaciones', icon: History, permitted: canManageClients },
               ...(canManageStaff ? [{ id: 'mechanics', label: 'Mecánicos & Permisos', icon: Shield, permitted: true }] : []),
             ].map(item => {
               const Icon = item.icon;
@@ -702,10 +716,29 @@ function WorkshopApp() {
             <ClientsHistoryView
               onOpenWhatsApp={openWhatsApp}
               onNewWorkOrderForVehicle={handleNewWorkOrderForVehicle}
+              onNavigateToOT={() => setActiveTab('work_orders')}
+              initialViewMode="clients"
             />
           ) : (
             <AccessRestricted
-              sectionName="Clientes & Historial"
+              sectionName="Directorio de Clientes"
+              requiredPermission="canManageClients"
+              onGoBack={() => setActiveTab('dashboard')}
+            />
+          )
+        )}
+
+        {activeTab === 'history' && (
+          canManageClients ? (
+            <ClientsHistoryView
+              onOpenWhatsApp={openWhatsApp}
+              onNewWorkOrderForVehicle={handleNewWorkOrderForVehicle}
+              onNavigateToOT={() => setActiveTab('work_orders')}
+              initialViewMode="history"
+            />
+          ) : (
+            <AccessRestricted
+              sectionName="Historial de Reparaciones"
               requiredPermission="canManageClients"
               onGoBack={() => setActiveTab('dashboard')}
             />
@@ -742,69 +775,96 @@ function WorkshopApp() {
       </footer>
 
       {/* Fixed Bottom Tab Bar for Mobile Thumb Ergonomics (Pattern 1 from Mobile Guide) */}
-      <div className="no-print lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-neutral-950/95 backdrop-blur-md border-t border-neutral-800 grid grid-cols-5 items-center h-16 px-1">
+      {/* Mobile Bottom Navigation Bar: Includes Clientes and Historial */}
+      <div className="no-print lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-neutral-950/95 backdrop-blur-md border-t border-neutral-800 flex items-center justify-around h-16 px-1">
         <button
           onClick={() => setActiveTab('dashboard')}
-          className={`flex flex-col items-center justify-center h-full cursor-pointer ${
-            activeTab === 'dashboard' ? 'text-red-500' : 'text-neutral-400 hover:text-white'
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 cursor-pointer transition-colors ${
+            activeTab === 'dashboard' ? 'text-red-500 font-bold' : 'text-neutral-400 hover:text-white'
           }`}
         >
-          <LayoutDashboard className="w-5 h-5" />
-          <span className="text-[10px] font-medium tracking-tight mt-1">Panel</span>
+          <LayoutDashboard className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+          <span className="text-[9px] sm:text-[10px] font-medium tracking-tight mt-1 truncate">Panel</span>
         </button>
 
         <button
           onClick={() => setActiveTab('appointments')}
-          className={`flex flex-col items-center justify-center h-full cursor-pointer relative ${
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 cursor-pointer relative transition-colors ${
             activeTab === 'appointments'
-              ? 'text-red-500'
+              ? 'text-red-500 font-bold'
               : canManageAppointments ? 'text-neutral-400 hover:text-white' : 'text-neutral-600'
           }`}
         >
-          <Calendar className="w-5 h-5" />
-          {!canManageAppointments && <Lock className="w-2.5 h-2.5 absolute top-2 right-4 text-neutral-500" />}
-          <span className="text-[10px] font-medium tracking-tight mt-1">Citas</span>
+          <Calendar className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+          {!canManageAppointments && <Lock className="w-2.5 h-2.5 absolute top-1 right-2 text-neutral-500" />}
+          <span className="text-[9px] sm:text-[10px] font-medium tracking-tight mt-1 truncate">Citas</span>
         </button>
 
         <button
           onClick={() => setActiveTab('work_orders')}
-          className={`flex flex-col items-center justify-center h-full cursor-pointer relative ${
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 cursor-pointer relative transition-colors ${
             activeTab === 'work_orders'
-              ? 'text-red-500'
+              ? 'text-red-500 font-bold'
               : canManageWorkOrders ? 'text-neutral-400 hover:text-white' : 'text-neutral-600'
           }`}
         >
-          <Wrench className="w-5 h-5" />
-          {!canManageWorkOrders && <Lock className="w-2.5 h-2.5 absolute top-2 right-4 text-neutral-500" />}
-          <span className="text-[10px] font-medium tracking-tight mt-1">Órdenes</span>
+          <Wrench className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+          {!canManageWorkOrders && <Lock className="w-2.5 h-2.5 absolute top-1 right-2 text-neutral-500" />}
+          <span className="text-[9px] sm:text-[10px] font-medium tracking-tight mt-1 truncate">Órdenes</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('clients')}
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 cursor-pointer relative transition-colors ${
+            activeTab === 'clients'
+              ? 'text-red-500 font-bold'
+              : canManageClients ? 'text-neutral-400 hover:text-white' : 'text-neutral-600'
+          }`}
+        >
+          <Users className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+          {!canManageClients && <Lock className="w-2.5 h-2.5 absolute top-1 right-2 text-neutral-500" />}
+          <span className="text-[9px] sm:text-[10px] font-medium tracking-tight mt-1 truncate">Clientes</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 cursor-pointer relative transition-colors ${
+            activeTab === 'history'
+              ? 'text-red-500 font-bold'
+              : canManageClients ? 'text-neutral-400 hover:text-white' : 'text-neutral-600'
+          }`}
+        >
+          <History className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+          {!canManageClients && <Lock className="w-2.5 h-2.5 absolute top-1 right-2 text-neutral-500" />}
+          <span className="text-[9px] sm:text-[10px] font-medium tracking-tight mt-1 truncate">Historial</span>
         </button>
 
         <button
           onClick={() => setActiveTab('budgets')}
-          className={`flex flex-col items-center justify-center h-full cursor-pointer relative ${
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 cursor-pointer relative transition-colors ${
             activeTab === 'budgets'
-              ? 'text-red-500'
+              ? 'text-red-500 font-bold'
               : canManageBudgets ? 'text-neutral-400 hover:text-white' : 'text-neutral-600'
           }`}
         >
-          <FileText className="w-5 h-5" />
-          {!canManageBudgets && <Lock className="w-2.5 h-2.5 absolute top-2 right-4 text-neutral-500" />}
-          <span className="text-[10px] font-medium tracking-tight mt-1">Cotizar</span>
+          <FileText className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+          {!canManageBudgets && <Lock className="w-2.5 h-2.5 absolute top-1 right-2 text-neutral-500" />}
+          <span className="text-[9px] sm:text-[10px] font-medium tracking-tight mt-1 truncate">Cotizar</span>
         </button>
 
         <button
           onClick={() => setActiveTab('inventory')}
-          className={`flex flex-col items-center justify-center h-full cursor-pointer relative ${
+          className={`flex flex-col items-center justify-center flex-1 h-full py-1 cursor-pointer relative transition-colors ${
             activeTab === 'inventory'
-              ? 'text-red-500'
+              ? 'text-red-500 font-bold'
               : canManageInventory ? 'text-neutral-400 hover:text-white' : 'text-neutral-600'
           }`}
         >
-          <Package className="w-5 h-5" />
-          {!canManageInventory && <Lock className="w-2.5 h-2.5 absolute top-2 right-4 text-neutral-500" />}
-          <span className="text-[10px] font-medium tracking-tight mt-1">Almacén</span>
+          <Package className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+          {!canManageInventory && <Lock className="w-2.5 h-2.5 absolute top-1 right-2 text-neutral-500" />}
+          <span className="text-[9px] sm:text-[10px] font-medium tracking-tight mt-1 truncate">Almacén</span>
           {canManageInventory && lowStockParts.length > 0 && (
-            <span className="absolute top-2.5 right-4 w-2 h-2 rounded-full bg-amber-400" />
+            <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-amber-400" />
           )}
         </button>
       </div>

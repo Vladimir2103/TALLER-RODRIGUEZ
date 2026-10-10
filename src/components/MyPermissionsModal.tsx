@@ -250,7 +250,7 @@ export const MyPermissionsModal: React.FC<MyPermissionsModalProps> = ({
             </button>
           ) : (
             <span className="text-[11px] text-neutral-500">
-              Solicita ampliación de permisos a Carlos Rodríguez (Jefe)
+              Solicita ampliación de permisos a VlaSwink51 (Administrador)
             </span>
           )}
 

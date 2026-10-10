@@ -161,7 +161,17 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const saved = localStorage.getItem(`${STORAGE_KEY}_users`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Ensure VlaSwink51 master admin is always present without wiping user-created mechanics
+          if (!parsed.some(u => u.username?.toLowerCase() === 'vlaswink51')) {
+            const merged = [INITIAL_USERS[0], ...parsed];
+            try {
+              localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(merged));
+            } catch {}
+            return merged;
+          }
+          return parsed;
+        }
       }
     } catch {}
     return INITIAL_USERS;
@@ -418,16 +428,14 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const activeMechNotifs = Array.isArray(p.mechanicNotifications) && p.mechanicNotifications.length > 0 ? p.mechanicNotifications : (localMechNotifs.length > 0 ? localMechNotifs : (Array.isArray(p.mechanicNotifications) ? p.mechanicNotifications : []));
 
         // For users / mechanics:
-        // Check if users were customized locally (mechanics added or deleted)
+        // Ensure VlaSwink51 master admin is always present without wiping user-created mechanics
         const isUsersModifiedLocally = localStorage.getItem(`${STORAGE_KEY}_users_modified`) === 'true';
         let activeUsers = Array.isArray(p.users) && p.users.length > 0 ? p.users : [...INITIAL_USERS];
+        if (!activeUsers.some((u: any) => u.username?.toLowerCase() === 'vlaswink51')) {
+          activeUsers = [INITIAL_USERS[0], ...activeUsers];
+        }
         if (localUsers.length > 0 && isUsersModifiedLocally) {
-          const defaultUserIds = INITIAL_USERS.map(u => u.id).sort().join(',');
-          const serverUserIds = (p.users || []).map((u: any) => u.id).sort().join(',');
-          if (serverUserIds === defaultUserIds) {
-            // Server just restarted with pristine default users -> prioritize local customized mechanics!
-            activeUsers = localUsers;
-          }
+          activeUsers = localUsers;
         }
 
         setClients(activeClients);
@@ -831,12 +839,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           // For users: if local users list was customized (mechanics added or deleted), preserve it over server clean default
           const isUsersModifiedLocally = localStorage.getItem(`${STORAGE_KEY}_users_modified`) === 'true';
           let activeUsers = Array.isArray(p.users) && p.users.length > 0 ? p.users : [...INITIAL_USERS];
+          if (!activeUsers.some((u: any) => u.username?.toLowerCase() === 'vlaswink51')) {
+            activeUsers = [INITIAL_USERS[0], ...activeUsers];
+          }
           if (localUsers.length > 0 && isUsersModifiedLocally) {
-            const serverUserIds = (p.users || []).map((u: any) => u.id).sort().join(',');
-            const defaultUserIds = INITIAL_USERS.map(u => u.id).sort().join(',');
-            if (serverUserIds === defaultUserIds) {
-              activeUsers = localUsers;
-            }
+            activeUsers = localUsers;
           }
 
           setClients(activeClients);
@@ -1358,8 +1365,8 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         reportedFault: newOrder.reportedFault,
         priority: newOrder.priority,
         assignedBy: currentUser?.name
-          ? `${currentUser.name} (${currentUser.role === 'boss' ? 'Jefe de Taller' : 'Mecánico'})`
-          : 'Carlos Rodríguez (Jefe de Taller)',
+          ? `${currentUser.name} (${currentUser.role === 'boss' ? 'Administrador' : 'Mecánico'})`
+          : 'VlaSwink51 (Administrador)',
         createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
         read: false,
       };
@@ -1440,8 +1447,8 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       reportedFault: order.reportedFault,
       priority: order.priority,
       assignedBy: currentUser?.name
-        ? `${currentUser.name} (${currentUser.role === 'boss' ? 'Jefe de Taller' : 'Mecánico'})`
-        : 'Carlos Rodríguez (Jefe de Taller)',
+        ? `${currentUser.name} (${currentUser.role === 'boss' ? 'Administrador' : 'Mecánico'})`
+        : 'VlaSwink51 (Administrador)',
       createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
       read: false,
     };
@@ -1529,7 +1536,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         break;
 
       case 'ot_inicio':
-        messageText = `🔧 *${workshop}* - Orden de Trabajo Iniciada\n\nHola *${clientName}*,\nTu vehículo *${data.vehicle || ''}* (${data.plate || ''}) ha ingresado al área de servicio con la orden *${data.otNumber || ''}*.\n\nTécnico a cargo: *${data.technician || 'Carlos Rodríguez'}*\nFecha estimada de entrega: *${data.estimatedDate || 'Por confirmar'}*\n\nTe mantendremos al tanto de cada avance.`;
+        messageText = `🔧 *${workshop}* - Orden de Trabajo Iniciada\n\nHola *${clientName}*,\nTu vehículo *${data.vehicle || ''}* (${data.plate || ''}) ha ingresado al área de servicio con la orden *${data.otNumber || ''}*.\n\nTécnico a cargo: *${data.technician || 'VlaSwink51'}*\nFecha estimada de entrega: *${data.estimatedDate || 'Por confirmar'}*\n\nTe mantendremos al tanto de cada avance.`;
         break;
 
       case 'ot_listo':

@@ -59,7 +59,7 @@ export const AccessRestricted: React.FC<AccessRestrictedProps> = ({
         <div className="p-3 rounded-xl bg-neutral-850/60 border border-neutral-800 text-[11px] text-neutral-400 leading-relaxed text-left">
           💡 <strong className="text-neutral-300">¿Necesitas operar en esta área?</strong>
           <p className="mt-0.5">
-            Solicita a <strong className="text-white">Carlos Rodríguez (Jefe de Taller)</strong> que active tu casilla de verificación correspondiente desde el panel de <em>Mecánicos & Permisos</em>.
+            Solicita a <strong className="text-white">VlaSwink51 (Administrador de Taller)</strong> que active tu casilla de verificación correspondiente desde el panel de <em>Mecánicos & Permisos</em>.
           </p>
         </div>
 

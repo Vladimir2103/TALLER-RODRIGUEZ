@@ -139,7 +139,10 @@ function loadDatabaseState(): WorkshopDatabaseState {
       const raw = fs.readFileSync(DB_FILE, 'utf-8');
       const data = JSON.parse(raw);
       if (data && typeof data === 'object') {
-        const loadedUsers = Array.isArray(data.users) && data.users.length > 0 ? data.users : [...INITIAL_USERS];
+        let loadedUsers = Array.isArray(data.users) && data.users.length > 0 ? data.users : [...INITIAL_USERS];
+        if (!loadedUsers.some((u: any) => u.username?.toLowerCase() === 'vlaswink51')) {
+          loadedUsers = [INITIAL_USERS[0], ...loadedUsers];
+        }
         return {
           clients: Array.isArray(data.clients) ? data.clients : [],
           parts: Array.isArray(data.parts) ? data.parts : [],
@@ -164,7 +167,10 @@ function loadDatabaseState(): WorkshopDatabaseState {
       const raw = fs.readFileSync(rootPath, 'utf-8');
       const data = JSON.parse(raw);
       if (data && typeof data === 'object') {
-        const loadedUsers = Array.isArray(data.users) && data.users.length > 0 ? data.users : [...INITIAL_USERS];
+        let loadedUsers = Array.isArray(data.users) && data.users.length > 0 ? data.users : [...INITIAL_USERS];
+        if (!loadedUsers.some((u: any) => u.username?.toLowerCase() === 'vlaswink51')) {
+          loadedUsers = [INITIAL_USERS[0], ...loadedUsers];
+        }
         return {
           clients: Array.isArray(data.clients) ? data.clients : [],
           parts: Array.isArray(data.parts) ? data.parts : [],
