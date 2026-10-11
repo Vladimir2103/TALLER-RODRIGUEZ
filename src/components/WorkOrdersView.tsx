@@ -66,6 +66,7 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
     activeTechnicians,
     hasPermission,
     currentUser,
+    workshopContact,
   } = useWorkshop();
 
   const canManageWorkOrders = hasPermission('canManageWorkOrders');
@@ -827,7 +828,7 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                     onChange={e => setAssignedTechnician(e.target.value)}
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:outline-none"
                   >
-                    {techList.map(t => (
+                    {techList.map((t: string) => (
                       <option key={t} value={t}>
                         {t}
                       </option>
@@ -1036,13 +1037,19 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                   <Logo className="w-14 h-14 shrink-0" theme="dark" showText={false} />
                   <div>
                     <h2 className="text-sm font-extrabold tracking-tight text-white uppercase">
-                      {WORKSHOP_CONFIG.name}
+                      {workshopContact.name}
                     </h2>
-                    <p className="text-[11px] text-neutral-400">{WORKSHOP_CONFIG.legalName}</p>
-                    <p className="text-[11px] text-neutral-400">{WORKSHOP_CONFIG.address}</p>
-                    <p className="text-[11px] text-neutral-400">
-                      Tel: {WORKSHOP_CONFIG.phone} · {WORKSHOP_CONFIG.taxId} · {WORKSHOP_CONFIG.taxNRC}
-                    </p>
+                    <p className="text-[11px] text-neutral-400">{workshopContact.legalName}</p>
+                    <p className="text-[11px] text-neutral-400">{workshopContact.address}</p>
+                    <div className="text-[11px] text-neutral-300 font-medium mt-0.5">
+                      <span className="text-red-400 font-semibold">Jefe de Taller:</span> {workshopContact.bossName}
+                    </div>
+                    <div className="text-[11px] text-neutral-400 font-mono">
+                      Tel: <span className="text-white">{workshopContact.phone}</span> · Correo: <span className="text-white">{workshopContact.email}</span>
+                    </div>
+                    <div className="text-[10px] text-neutral-500 font-mono">
+                      {workshopContact.taxId} · {workshopContact.taxNRC}
+                    </div>
                   </div>
                 </div>
 
@@ -1123,7 +1130,7 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                     <tr className="border-b border-neutral-800 text-neutral-400 uppercase font-mono text-[9px]">
                       <th className="py-1.5 px-2">Código</th>
                       <th className="py-1.5 px-2">Concepto / Repuesto</th>
-                      <th className="py-1.5 px-2 text-center">Cant / Horas</th>
+                      <th className="py-1.5 px-2 text-center">Cantidad</th>
                       <th className="py-1.5 px-2 text-right">P. Unitario</th>
                       <th className="py-1.5 px-2 text-right">Importe</th>
                     </tr>

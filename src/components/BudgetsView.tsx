@@ -47,6 +47,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
     clients,
     parts,
     hasPermission,
+    workshopContact,
   } = useWorkshop();
 
   const canManageBudgets = hasPermission('canManageBudgets');
@@ -79,9 +80,9 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
       id: `bi-${Date.now()}-1`,
       type: 'mano_de_obra',
       description: 'Mano de obra especializada: Diagnóstico y servicio preventivo',
-      quantity: 2,
+      quantity: 1,
       unitPrice: WORKSHOP_CONFIG.defaultLaborRate,
-      total: 2 * WORKSHOP_CONFIG.defaultLaborRate,
+      total: WORKSHOP_CONFIG.defaultLaborRate,
     },
   ]);
 
@@ -136,7 +137,16 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
       prev.map((item, i) => {
         if (i !== index) return item;
         const merged = { ...item, ...updates };
-        merged.total = Number(merged.quantity) * Number(merged.unitPrice);
+        if (merged.type === 'mano_de_obra') {
+          merged.quantity = 1;
+          if (updates.total !== undefined) {
+            merged.unitPrice = Number(updates.total);
+          } else if (updates.unitPrice !== undefined) {
+            merged.total = Number(updates.unitPrice);
+          }
+        } else {
+          merged.total = Number(merged.quantity) * Number(merged.unitPrice);
+        }
         return merged;
       })
     );
@@ -250,9 +260,9 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                   id: `bi-${Date.now()}-1`,
                   type: 'mano_de_obra',
                   description: 'Mano de obra: Afinación mayor y escáner de diagnóstico',
-                  quantity: 2.5,
+                  quantity: 1,
                   unitPrice: WORKSHOP_CONFIG.defaultLaborRate,
-                  total: 2.5 * WORKSHOP_CONFIG.defaultLaborRate,
+                  total: WORKSHOP_CONFIG.defaultLaborRate,
                 },
               ]);
               setIsModalOpen(true);
@@ -588,40 +598,66 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                         </div>
                       )}
 
-                      <div className="grid grid-cols-3 gap-2 pt-1">
-                        <div>
-                          <label className="text-[10px] text-neutral-400 block mb-0.5">
-                            {item.type === 'mano_de_obra' ? 'Cant. Servicios' : 'Cantidad'}
+                      {item.type === 'mano_de_obra' ? (
+                        <div className="pt-1">
+                          <label className="text-[10px] font-semibold text-neutral-300 block mb-0.5">
+                            Precio Mano de Obra Total ($ USD):
                           </label>
-                          <input
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={item.quantity}
-                            onChange={e => handleUpdateItem(idx, { quantity: Number(e.target.value) })}
-                            className="w-full px-2 py-1 bg-neutral-900 border border-neutral-800 rounded-md text-white font-mono text-xs focus:outline-none"
-                          />
+                          <div className="relative max-w-xs">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500 font-mono text-xs">$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={item.total}
+                              onChange={e => {
+                                const val = Number(e.target.value) || 0;
+                                handleUpdateItem(idx, { total: val, unitPrice: val, quantity: 1 });
+                              }}
+                              placeholder="Ej. 35.00"
+                              className="w-full pl-6 pr-3 py-1.5 bg-neutral-900 border border-neutral-700 focus:border-red-500 rounded-md text-white font-mono font-semibold text-xs focus:outline-none"
+                            />
+                          </div>
+                          <span className="text-[10px] text-neutral-500 mt-0.5 block">
+                            Monto fijo total de mano de obra para este servicio (sin cobro por hora)
+                          </span>
                         </div>
-                        <div>
-                          <label className="text-[10px] text-neutral-400 block mb-0.5">
-                            {item.type === 'mano_de_obra' ? 'Precio Mano de Obra ($)' : 'Precio Unitario ($ USD)'}
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="5"
-                            value={item.unitPrice}
-                            onChange={e => handleUpdateItem(idx, { unitPrice: Number(e.target.value) })}
-                            className="w-full px-2 py-1 bg-neutral-900 border border-neutral-800 rounded-md text-white font-mono text-xs focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-neutral-400 block mb-0.5">Total Concepto (USD)</label>
-                          <div className="w-full px-2 py-1 bg-neutral-900/60 border border-neutral-800 rounded-md text-emerald-400 font-mono font-semibold text-xs tabular-nums">
-                            {formatUSD(item.total)}
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2 pt-1">
+                          <div>
+                            <label className="text-[10px] text-neutral-400 block mb-0.5">
+                              Cantidad
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={item.quantity}
+                              onChange={e => handleUpdateItem(idx, { quantity: Number(e.target.value) })}
+                              className="w-full px-2 py-1 bg-neutral-900 border border-neutral-800 rounded-md text-white font-mono text-xs focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-neutral-400 block mb-0.5">
+                              Precio Unitario ($ USD)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="5"
+                              value={item.unitPrice}
+                              onChange={e => handleUpdateItem(idx, { unitPrice: Number(e.target.value) })}
+                              className="w-full px-2 py-1 bg-neutral-900 border border-neutral-800 rounded-md text-white font-mono text-xs focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-neutral-400 block mb-0.5">Total Concepto (USD)</label>
+                            <div className="w-full px-2 py-1 bg-neutral-900/60 border border-neutral-800 rounded-md text-emerald-400 font-mono font-semibold text-xs tabular-nums">
+                              {formatUSD(item.total)}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -749,13 +785,19 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                   <Logo className="w-16 h-16 shrink-0" theme="dark" showText={false} />
                   <div>
                     <h2 className="text-base font-extrabold tracking-tight text-white uppercase">
-                      {WORKSHOP_CONFIG.name}
+                      {workshopContact.name}
                     </h2>
-                    <p className="text-[11px] text-neutral-400">{WORKSHOP_CONFIG.legalName}</p>
-                    <p className="text-[11px] text-neutral-400">{WORKSHOP_CONFIG.address}</p>
-                    <p className="text-[11px] text-neutral-400">
-                      Tel / WhatsApp: {WORKSHOP_CONFIG.phone} · {WORKSHOP_CONFIG.taxId} · {WORKSHOP_CONFIG.taxNRC}
-                    </p>
+                    <p className="text-[11px] text-neutral-400">{workshopContact.legalName}</p>
+                    <p className="text-[11px] text-neutral-400">{workshopContact.address}</p>
+                    <div className="text-[11px] text-neutral-300 font-medium mt-0.5">
+                      <span className="text-red-400 font-semibold">Jefe de Taller:</span> {workshopContact.bossName}
+                    </div>
+                    <div className="text-[11px] text-neutral-400 font-mono">
+                      Tel / WhatsApp: <span className="text-white">{workshopContact.phone}</span> · Correo: <span className="text-white">{workshopContact.email}</span>
+                    </div>
+                    <div className="text-[10px] text-neutral-500 font-mono">
+                      {workshopContact.taxId} · {workshopContact.taxNRC}
+                    </div>
                   </div>
                 </div>
 
@@ -801,7 +843,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                     <tr className="border-b border-neutral-800 text-neutral-400 uppercase font-mono text-[10px]">
                       <th className="py-2 px-3">Tipo</th>
                       <th className="py-2 px-3">Descripción / Referencia</th>
-                      <th className="py-2 px-3 text-center">Cant. / Horas</th>
+                      <th className="py-2 px-3 text-center">Cantidad</th>
                       <th className="py-2 px-3 text-right">P. Unitario</th>
                       <th className="py-2 px-3 text-right">Importe</th>
                     </tr>
@@ -813,7 +855,9 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                           {item.type === 'repuesto' ? 'Repuesto' : 'Mano de Obra'}
                         </td>
                         <td className="py-2.5 px-3 text-white font-medium">{item.description}</td>
-                        <td className="py-2.5 px-3 text-center font-mono text-neutral-300">{item.quantity}</td>
+                        <td className="py-2.5 px-3 text-center font-mono text-neutral-300">
+                          {item.type === 'mano_de_obra' ? '1 serv.' : item.quantity}
+                        </td>
                         <td className="py-2.5 px-3 text-right font-mono text-neutral-400 tabular-nums">
                           {formatUSD(item.unitPrice)}
                         </td>

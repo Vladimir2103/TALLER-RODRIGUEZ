@@ -554,7 +554,7 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
                     onChange={e => setAssignedTechnician(e.target.value)}
                     className="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:outline-none focus:border-red-500"
                   >
-                    {techList.map(t => (
+                    {techList.map((t: string) => (
                       <option key={t} value={t}>
                         {t}
                       </option>

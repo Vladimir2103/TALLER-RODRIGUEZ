@@ -40,7 +40,8 @@ export const ClientTrackingPortal: React.FC<ClientTrackingPortalProps> = ({
   type,
   id,
 }) => {
-  const { workOrders, appointments, syncStatus } = useWorkshop();
+  const { workOrders, appointments, syncStatus, workshopContact } = useWorkshop();
+  const activeContact = workshopContact || WORKSHOP_CONFIG;
   const [copiedLink, setCopiedLink] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<string>(() =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -690,13 +691,13 @@ export const ClientTrackingPortal: React.FC<ClientTrackingPortalProps> = ({
                 ¿Tienes dudas o deseas consultar sobre tu vehículo?
               </h4>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Comunícate directamente con la recepción o el jefe de taller.
+                Comunícate directamente con el Jefe de Taller (<strong className="text-neutral-200">{activeContact.bossName}</strong>): Tel: <strong className="text-white font-mono">{activeContact.phone}</strong> · Correo: <strong className="text-neutral-300 font-mono">{activeContact.email}</strong>
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <a
-                href={`https://wa.me/${WORKSHOP_CONFIG.whatsappNumber}?text=${encodeURIComponent(
+                href={`https://wa.me/${activeContact.whatsappNumber}?text=${encodeURIComponent(
                   `Hola Taller Rodríguez Rodríguez, consulto sobre mi ${
                     type === 'ot' && liveOT ? `orden de trabajo ${liveOT.otNumber}` : 'cita en el taller'
                   }.`
@@ -710,7 +711,7 @@ export const ClientTrackingPortal: React.FC<ClientTrackingPortalProps> = ({
               </a>
 
               <a
-                href={`tel:${WORKSHOP_CONFIG.phone}`}
+                href={`tel:${activeContact.phone}`}
                 className="py-2.5 px-3.5 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold rounded-xl text-xs flex items-center gap-1.5 transition-colors border border-neutral-700"
               >
                 <Phone className="w-3.5 h-3.5" />
@@ -724,11 +725,11 @@ export const ClientTrackingPortal: React.FC<ClientTrackingPortalProps> = ({
       {/* Footer */}
       <footer className="mt-auto border-t border-neutral-800 bg-neutral-950 py-4 px-4 sm:px-6 text-center text-xs text-neutral-400 font-mono space-y-1">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-neutral-400">
-          <span>Taller Automotriz Rodríguez Rodríguez</span>
+          <span>{activeContact.legalName || 'Taller Automotriz Rodríguez Rodríguez'}</span>
           <span className="hidden sm:inline">·</span>
-          <span>📍 El Salvador, Usulután</span>
+          <span>📍 {activeContact.address || 'El Salvador, Usulután'}</span>
           <span className="hidden sm:inline">·</span>
-          <span>App creada por <strong className="text-white font-bold">VlaSwink51</strong></span>
+          <span>Atención Oficial: <strong className="text-white font-bold">{activeContact.bossName}</strong></span>
         </div>
         <p className="text-[11px] text-neutral-400">
           Monitoreo vehicular en tiempo real · Acceso de solo lectura

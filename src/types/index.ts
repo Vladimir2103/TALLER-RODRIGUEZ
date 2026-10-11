@@ -219,16 +219,36 @@ export interface MechanicAssignmentNotification {
   read: boolean;
 }
 
+export interface WorkshopLegalDocument {
+  id: string;
+  name: string;
+  documentNumber: string;
+  issuer: string;
+  issueDate: string;
+  expiryDate?: string;
+  status: 'vigente' | 'en_tramite' | 'por_renovar';
+  notes?: string;
+}
+
 export interface WorkshopContact {
   name: string;
   legalName: string;
+  tagline?: string;
   bossName: string;
   phone: string;
   email: string;
   whatsappNumber: string;
   address: string;
-  taxId: string;
-  taxNRC: string;
+  city?: string;
+  country?: string;
+  taxId: string; // NIT
+  taxNRC: string; // NRC
+  businessActivity?: string; // Giro
+  commercialRegistry?: string; // Matrícula de comercio
+  municipalLicense?: string; // Licencia de funcionamiento
+  insurancePolicy?: string; // Póliza de seguro
+  warrantyTerms?: string; // Términos de garantía
+  legalDocuments?: WorkshopLegalDocument[];
 }
 
 

@@ -10,6 +10,8 @@ import {
   User,
   MechanicPermissions,
   MechanicAssignmentNotification,
+  WorkshopContact,
+  WorkshopLegalDocument,
 } from '../types';
 import {
   INITIAL_CLIENTS,
@@ -88,6 +90,12 @@ interface WorkshopContextType {
     customMessage?: string;
     data?: Record<string, any>;
   }) => string;
+  // Workshop Info, Contacts (Jefe de Taller) & Legal Documents
+  workshopContact: WorkshopContact;
+  updateWorkshopContact: (updates: Partial<WorkshopContact>) => void;
+  addLegalDocument: (doc: Omit<WorkshopLegalDocument, 'id'>) => void;
+  updateLegalDocument: (id: string, updates: Partial<WorkshopLegalDocument>) => void;
+  deleteLegalDocument: (id: string) => void;
   // Backup & Restore
   exportBackupData: () => void;
   importBackupData: (jsonData: string) => boolean;
@@ -184,6 +192,35 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch {
       return [];
     }
+  });
+
+  const [workshopContact, setWorkshopContact] = useState<WorkshopContact>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_workshop_contact`);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {}
+    return {
+      name: WORKSHOP_CONFIG.name,
+      legalName: WORKSHOP_CONFIG.legalName,
+      tagline: WORKSHOP_CONFIG.tagline,
+      bossName: WORKSHOP_CONFIG.bossName,
+      phone: WORKSHOP_CONFIG.phone,
+      email: WORKSHOP_CONFIG.email,
+      whatsappNumber: WORKSHOP_CONFIG.whatsappNumber,
+      address: WORKSHOP_CONFIG.address,
+      city: WORKSHOP_CONFIG.city,
+      country: WORKSHOP_CONFIG.country,
+      taxId: WORKSHOP_CONFIG.taxId,
+      taxNRC: WORKSHOP_CONFIG.taxNRC,
+      businessActivity: WORKSHOP_CONFIG.businessActivity,
+      commercialRegistry: WORKSHOP_CONFIG.commercialRegistry,
+      municipalLicense: WORKSHOP_CONFIG.municipalLicense,
+      insurancePolicy: WORKSHOP_CONFIG.insurancePolicy,
+      warrantyTerms: WORKSHOP_CONFIG.warrantyTerms,
+      legalDocuments: WORKSHOP_CONFIG.legalDocuments || [],
+    };
   });
 
   const [isDbReady, setIsDbReady] = useState<boolean>(false);
@@ -316,6 +353,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       localStorage.setItem(`${STORAGE_KEY}_notifications`, JSON.stringify(notifications));
       localStorage.setItem(`${STORAGE_KEY}_mechanicNotifications`, JSON.stringify(mechanicNotifications));
       localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(users));
+      localStorage.setItem(`${STORAGE_KEY}_workshop_contact`, JSON.stringify(workshopContact));
       // NUNCA persistir la sesión del usuario para garantizar login al recargar o cerrar pestaña
       localStorage.removeItem(`${STORAGE_KEY}_currentUser`);
       setLastSyncedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
@@ -341,6 +379,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             notifications,
             mechanicNotifications,
             users,
+            workshopContact,
           }),
         }).catch(err => {
           console.warn('Auto-save to database failed:', err);
@@ -351,7 +390,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => {
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     };
-  }, [clients, parts, appointments, budgets, workOrders, notifications, mechanicNotifications, users]);
+  }, [clients, parts, appointments, budgets, workOrders, notifications, mechanicNotifications, users, workshopContact]);
 
   // Periodic heartbeat sync indicator
   const triggerCloudSync = () => {
@@ -446,6 +485,9 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setUsers(activeUsers);
         setNotifications(activeNotifs);
         setMechanicNotifications(activeMechNotifs);
+        if (p.workshopContact && typeof p.workshopContact === 'object') {
+          setWorkshopContact(p.workshopContact);
+        }
         isInitializedFromServerRef.current = true;
 
         // If local data rescued a cold/wiped server state, re-hydrate server immediately so database is saved!
@@ -471,6 +513,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               notifications: activeNotifs,
               mechanicNotifications: activeMechNotifs,
               users: activeUsers,
+              workshopContact: p.workshopContact || workshopContact,
             }),
           }).catch(e => console.warn('INIT_STATE re-hydration notice:', e));
         }
@@ -487,7 +530,18 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (Array.isArray(p.parts)) setParts(p.parts);
         if (Array.isArray(p.appointments)) setAppointments(p.appointments);
         if (Array.isArray(p.budgets)) setBudgets(p.budgets);
+        if (p.workshopContact && typeof p.workshopContact === 'object') {
+          setWorkshopContact(p.workshopContact);
+        }
         isInitializedFromServerRef.current = true;
+        break;
+      }
+
+      case 'WORKSHOP_CONTACT_UPDATED': {
+        const { workshopContact: updatedContact } = data.payload || {};
+        if (updatedContact) {
+          setWorkshopContact(updatedContact);
+        }
         break;
       }
 
@@ -866,6 +920,10 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             localStorage.setItem(`${STORAGE_KEY}_workOrders`, JSON.stringify(activeWorkOrders));
             localStorage.setItem(`${STORAGE_KEY}_notifications`, JSON.stringify(activeNotifs));
             localStorage.setItem(`${STORAGE_KEY}_mechanicNotifications`, JSON.stringify(activeMechNotifs));
+            if (p.workshopContact && typeof p.workshopContact === 'object') {
+              setWorkshopContact(p.workshopContact);
+              localStorage.setItem(`${STORAGE_KEY}_workshop_contact`, JSON.stringify(p.workshopContact));
+            }
           } catch {}
 
           // If local data rescued an empty server state, re-hydrate server immediately so database is persistent!
@@ -891,6 +949,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 notifications: activeNotifs,
                 mechanicNotifications: activeMechNotifs,
                 users: activeUsers,
+                workshopContact: p.workshopContact || workshopContact,
               }),
             }).catch(err => console.warn('Re-hydration sync notice:', err));
           }
@@ -1320,7 +1379,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const partsTotal = data.partsUsed.reduce((sum, p) => sum + p.total, 0);
     const laborTotal = typeof data.laborTotal === 'number'
       ? data.laborTotal
-      : ((data.laborHours || 0) * (data.laborRatePerHour || WORKSHOP_CONFIG.defaultLaborRate));
+      : WORKSHOP_CONFIG.defaultLaborRate;
     const subtotal = partsTotal + laborTotal;
     const taxAmount = (subtotal * (data.taxPercent || WORKSHOP_CONFIG.defaultTaxPercent)) / 100;
     const total = Math.max(0, subtotal + taxAmount - (data.discountAmount || 0));
@@ -1404,7 +1463,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const partsTotal = merged.partsUsed.reduce((sum, p) => sum + p.total, 0);
         const laborTotal = typeof merged.laborTotal === 'number'
           ? merged.laborTotal
-          : ((merged.laborHours || 0) * (merged.laborRatePerHour || WORKSHOP_CONFIG.defaultLaborRate));
+          : WORKSHOP_CONFIG.defaultLaborRate;
         const subtotal = partsTotal + laborTotal;
         const taxAmount = (subtotal * (merged.taxPercent || WORKSHOP_CONFIG.defaultTaxPercent)) / 100;
         const total = Math.max(0, subtotal + taxAmount - (merged.discountAmount || 0));
@@ -1540,7 +1599,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         break;
 
       case 'ot_inicio':
-        messageText = `🔧 *${workshop}* - Orden de Trabajo Iniciada\n\nHola *${clientName}*,\nTu vehículo *${data.vehicle || ''}* (${data.plate || ''}) ha ingresado al área de servicio con la orden *${data.otNumber || ''}*.\n\nTécnico a cargo: *${data.technician || 'VlaSwink51'}*\nFecha estimada de entrega: *${data.estimatedDate || 'Por confirmar'}*\n\nTe mantendremos al tanto de cada avance.`;
+        messageText = `🔧 *${workshop}* - Orden de Trabajo Iniciada\n\nHola *${clientName}*,\nTu vehículo *${data.vehicle || ''}* (${data.plate || ''}) ha ingresado al área de servicio con la orden *${data.otNumber || ''}*.\n\nTécnico a cargo: *${data.technician || 'Técnico Especialista'}*\nFecha estimada de entrega: *${data.estimatedDate || 'Por confirmar'}*\n\nTe mantendremos al tanto de cada avance.`;
         break;
 
       case 'ot_listo':
@@ -1555,6 +1614,9 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         messageText = customMessage || `Hola ${clientName}, te escribimos de ${workshop}.`;
         break;
     }
+
+    // Incluir contacto oficial del Jefe de Taller (no del programador)
+    messageText += `\n\n👨‍🔧 *Contacto Taller / Jefe de Taller:* ${workshopContact.bossName}\n📞 Tel: ${workshopContact.phone}\n✉️ ${workshopContact.email}`;
 
     const logEntry: NotificationLog = {
       id: `notif-${Date.now()}`,
@@ -1788,10 +1850,54 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return Boolean(currentUser.permissions?.[permissionKey]);
   };
 
+  // Workshop Contact & Legal Documents Management
+  const updateWorkshopContact = (updates: Partial<WorkshopContact>) => {
+    if (!hasPermission('canManageMechanics')) {
+      alert('🔒 Acción Bloqueada: Solo el Jefe de Taller o personal autorizado puede modificar los datos del taller.');
+      return;
+    }
+    setWorkshopContact(prev => {
+      const next = { ...prev, ...updates };
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_workshop_contact`, JSON.stringify(next));
+      } catch {}
+      fetch('/api/workshop-contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workshopContact: next }),
+      }).catch(err => console.warn('[WorkshopContact] Error saving to server:', err));
+      sendRealtimeEvent('WORKSHOP_CONTACT_UPDATED', { workshopContact: next });
+      return next;
+    });
+    triggerCloudSync();
+  };
+
+  const addLegalDocument = (doc: Omit<WorkshopLegalDocument, 'id'>) => {
+    const newDoc: WorkshopLegalDocument = {
+      ...doc,
+      id: `doc-${Date.now()}`,
+    };
+    const nextDocs = [newDoc, ...(workshopContact.legalDocuments || [])];
+    updateWorkshopContact({ legalDocuments: nextDocs });
+  };
+
+  const updateLegalDocument = (id: string, updates: Partial<WorkshopLegalDocument>) => {
+    const nextDocs = (workshopContact.legalDocuments || []).map(d =>
+      d.id === id ? { ...d, ...updates } : d
+    );
+    updateWorkshopContact({ legalDocuments: nextDocs });
+  };
+
+  const deleteLegalDocument = (id: string) => {
+    const nextDocs = (workshopContact.legalDocuments || []).filter(d => d.id !== id);
+    updateWorkshopContact({ legalDocuments: nextDocs });
+  };
+
   // Backup & Restore
   const exportBackupData = () => {
     const backup = {
-      workshop: WORKSHOP_CONFIG,
+      workshop: workshopContact || WORKSHOP_CONFIG,
+      workshopContact,
       exportedAt: new Date().toISOString(),
       users,
       clients,
@@ -1822,6 +1928,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (data.workOrders && Array.isArray(data.workOrders)) setWorkOrders(data.workOrders);
       if (data.notifications && Array.isArray(data.notifications)) setNotifications(data.notifications);
       if (data.mechanicNotifications && Array.isArray(data.mechanicNotifications)) setMechanicNotifications(data.mechanicNotifications);
+      if (data.workshopContact) setWorkshopContact(data.workshopContact);
 
       // Persist directly to backend database on server / Render
       fetch('/api/database/restore', {
@@ -1916,6 +2023,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateWorkOrderStage,
         deleteWorkOrder,
         sendWhatsAppNotification,
+        workshopContact,
+        updateWorkshopContact,
+        addLegalDocument,
+        updateLegalDocument,
+        deleteLegalDocument,
         exportBackupData,
         importBackupData,
         resetToSampleData,
