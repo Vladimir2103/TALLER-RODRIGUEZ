@@ -1,4 +1,4 @@
-import { Client, Part, Appointment, Budget, WorkOrder, NotificationLog, User, MechanicAssignmentNotification, WorkshopContact } from '../types';
+import { Client, Part, Appointment, Budget, WorkOrder, NotificationLog, User, MechanicAssignmentNotification, WorkshopContact, FinalConsumerInvoice } from '../types';
 
 // Tablas operativas limpias para ingreso desde cero por el usuario
 export const INITIAL_CLIENTS: Client[] = [];
@@ -6,6 +6,7 @@ export const INITIAL_PARTS: Part[] = [];
 export const INITIAL_APPOINTMENTS: Appointment[] = [];
 export const INITIAL_BUDGETS: Budget[] = [];
 export const INITIAL_WORK_ORDERS: WorkOrder[] = [];
+export const INITIAL_INVOICES: FinalConsumerInvoice[] = [];
 export const INITIAL_NOTIFICATIONS: NotificationLog[] = [];
 export const INITIAL_MECHANIC_NOTIFICATIONS: MechanicAssignmentNotification[] = [];
 
@@ -34,6 +35,7 @@ export const INITIAL_USERS: User[] = [
       canManageMechanics: true,
       canSendWhatsApp: true,
       canDeleteRecords: true,
+      canManageInvoices: true,
     },
     notes: 'Programador y Administrador del Sistema. Control total operativo, técnico y administrativo.',
   },

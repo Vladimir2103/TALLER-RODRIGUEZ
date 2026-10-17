@@ -14,6 +14,7 @@ import { BudgetsView } from './components/BudgetsView';
 import { WorkOrdersView } from './components/WorkOrdersView';
 import { ClientsHistoryView } from './components/ClientsHistoryView';
 import { MechanicsManagementView } from './components/MechanicsManagementView';
+import { InvoicesView } from './components/InvoicesView';
 import { LoginModal } from './components/LoginModal';
 import { WhatsAppModal } from './components/WhatsAppModal';
 import { CloudSyncModal } from './components/CloudSyncModal';
@@ -27,6 +28,7 @@ import {
   LayoutDashboard,
   Calendar,
   Wrench,
+  Receipt,
   FileText,
   Package,
   History,
@@ -120,7 +122,7 @@ function WorkshopApp() {
 
   // Navigation
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'appointments' | 'work_orders' | 'budgets' | 'inventory' | 'clients' | 'history' | 'mechanics'
+    'dashboard' | 'appointments' | 'work_orders' | 'budgets' | 'invoices' | 'inventory' | 'clients' | 'history' | 'mechanics'
   >('dashboard');
 
   // WhatsApp Dialog State
@@ -143,6 +145,7 @@ function WorkshopApp() {
   const canManageAppointments = hasPermission('canManageAppointments');
   const canManageWorkOrders = hasPermission('canManageWorkOrders');
   const canManageBudgets = hasPermission('canManageBudgets');
+  const canManageInvoices = hasPermission('canManageInvoices') || canManageBudgets || isBoss;
   const canManageInventory = hasPermission('canManageInventory');
   const canManageClients = hasPermission('canManageClients');
   const canManageStaff = hasPermission('canManageMechanics');
@@ -302,6 +305,18 @@ function WorkshopApp() {
             >
               <span>Presupuestos</span>
               {!canManageBudgets && <Lock className="w-3 h-3 text-neutral-500" />}
+            </button>
+            <button
+              onClick={() => setActiveTab('invoices')}
+              className={`transition-colors cursor-pointer py-1 flex items-center gap-1.5 ${
+                activeTab === 'invoices'
+                  ? 'text-white border-b-2 border-red-500'
+                  : canManageInvoices ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-400'
+              }`}
+              title={canManageInvoices ? 'Facturas de Consumidor Final' : 'Acceso restringido'}
+            >
+              <span>Facturas</span>
+              {!canManageInvoices && <Lock className="w-3 h-3 text-neutral-500" />}
             </button>
             <button
               onClick={() => setActiveTab('inventory')}
@@ -571,6 +586,7 @@ function WorkshopApp() {
               { id: 'appointments', label: 'Citas & Agenda', icon: Calendar, permitted: canManageAppointments },
               { id: 'work_orders', label: 'Órdenes de Trabajo (OT)', icon: Wrench, permitted: canManageWorkOrders },
               { id: 'budgets', label: 'Presupuestos Automáticos', icon: FileText, permitted: canManageBudgets },
+              { id: 'invoices', label: 'Facturas Consumidor Final', icon: Receipt, permitted: canManageInvoices },
               { id: 'inventory', label: 'Inventario de Repuestos', icon: Package, permitted: canManageInventory },
               { id: 'clients', label: 'Directorio de Clientes', icon: Users, permitted: canManageClients },
               { id: 'history', label: 'Historial de Reparaciones', icon: History, permitted: canManageClients },
@@ -666,6 +682,7 @@ function WorkshopApp() {
           canManageWorkOrders ? (
             <WorkOrdersView
               onOpenWhatsApp={openWhatsApp}
+              onNavigateToInvoices={() => setActiveTab('invoices')}
               isCreateModalOpen={isCreateOTOpen}
               onCloseCreateModal={() => {
                 setIsCreateOTOpen(false);
@@ -687,6 +704,7 @@ function WorkshopApp() {
             <BudgetsView
               onOpenWhatsApp={openWhatsApp}
               onNavigateToOT={() => setActiveTab('work_orders')}
+              onNavigateToInvoices={() => setActiveTab('invoices')}
               isCreateModalOpen={isCreateBudgetOpen}
               onCloseCreateModal={() => setIsCreateBudgetOpen(false)}
             />
@@ -694,6 +712,18 @@ function WorkshopApp() {
             <AccessRestricted
               sectionName="Presupuestos & Cotizaciones"
               requiredPermission="canManageBudgets"
+              onGoBack={() => setActiveTab('dashboard')}
+            />
+          )
+        )}
+
+        {activeTab === 'invoices' && (
+          canManageInvoices ? (
+            <InvoicesView onOpenWhatsApp={openWhatsApp} />
+          ) : (
+            <AccessRestricted
+              sectionName="Facturas de Consumidor Final"
+              requiredPermission="canManageInvoices"
               onGoBack={() => setActiveTab('dashboard')}
             />
           )

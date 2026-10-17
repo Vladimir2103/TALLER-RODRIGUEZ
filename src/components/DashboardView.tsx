@@ -14,6 +14,7 @@ import {
   FileText,
   Plus,
   CheckCircle2,
+  Receipt,
 } from 'lucide-react';
 import { formatCurrency, formatUSD } from '../utils/format';
 import { WorkOrderStage } from '../types';
@@ -156,6 +157,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span className="whitespace-nowrap">Agendar Cita</span>
             </button>
           )}
+          <button
+            onClick={() => onNavigate('invoices')}
+            className="px-3 py-1.5 text-xs font-semibold text-neutral-200 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <Receipt className="w-3.5 h-3.5 text-red-500" />
+            <span className="whitespace-nowrap">Facturación</span>
+          </button>
         </div>
       </div>
 

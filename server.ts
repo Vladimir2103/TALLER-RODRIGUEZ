@@ -68,6 +68,7 @@ interface WorkshopDatabaseState {
   appointments: any[];
   budgets: any[];
   workOrders: any[];
+  invoices: any[];
   notifications: any[];
   users: any[];
   mechanicNotifications: any[];
@@ -150,6 +151,7 @@ function loadDatabaseState(): WorkshopDatabaseState {
           appointments: Array.isArray(data.appointments) ? data.appointments : [],
           budgets: Array.isArray(data.budgets) ? data.budgets : [],
           workOrders: Array.isArray(data.workOrders) ? data.workOrders : [],
+          invoices: Array.isArray(data.invoices) ? data.invoices : [],
           notifications: Array.isArray(data.notifications) ? data.notifications : [],
           users: loadedUsers,
           mechanicNotifications: Array.isArray(data.mechanicNotifications) ? data.mechanicNotifications : [],
@@ -179,6 +181,7 @@ function loadDatabaseState(): WorkshopDatabaseState {
           appointments: Array.isArray(data.appointments) ? data.appointments : [],
           budgets: Array.isArray(data.budgets) ? data.budgets : [],
           workOrders: Array.isArray(data.workOrders) ? data.workOrders : [],
+          invoices: Array.isArray(data.invoices) ? data.invoices : [],
           notifications: Array.isArray(data.notifications) ? data.notifications : [],
           users: loadedUsers,
           mechanicNotifications: Array.isArray(data.mechanicNotifications) ? data.mechanicNotifications : [],
@@ -204,6 +207,7 @@ function loadDatabaseState(): WorkshopDatabaseState {
     appointments: [],
     budgets: [],
     workOrders: [],
+    invoices: [],
     notifications: [],
     users: [...INITIAL_USERS],
     mechanicNotifications: [],
@@ -417,6 +421,31 @@ wss.on('connection', ws => {
           state.budgets = state.budgets.filter(b => b.id !== budgetId);
           persistDatabaseState();
           broadcast({ type: 'BUDGET_DELETED', payload: { budgetId }, connectedClients: wss.clients.size }, ws);
+          break;
+        }
+
+        // INVOICES (FACTURAS CONSUMIDOR FINAL)
+        case 'INVOICE_CREATE': {
+          const newInvoice = data.payload.invoice;
+          state.invoices = [newInvoice, ...(state.invoices || []).filter(i => i.id !== newInvoice.id)];
+          persistDatabaseState();
+          broadcast({ type: 'INVOICE_CREATED', payload: { invoice: newInvoice }, connectedClients: wss.clients.size }, ws);
+          break;
+        }
+
+        case 'INVOICE_UPDATE': {
+          const updatedInvoice = data.payload.invoice;
+          state.invoices = (state.invoices || []).map(i => (i.id === updatedInvoice.id ? updatedInvoice : i));
+          persistDatabaseState();
+          broadcast({ type: 'INVOICE_UPDATED', payload: { invoice: updatedInvoice }, connectedClients: wss.clients.size }, ws);
+          break;
+        }
+
+        case 'INVOICE_DELETE': {
+          const invoiceId = data.payload.invoiceId;
+          state.invoices = (state.invoices || []).filter(i => i.id !== invoiceId);
+          persistDatabaseState();
+          broadcast({ type: 'INVOICE_DELETED', payload: { invoiceId }, connectedClients: wss.clients.size }, ws);
           break;
         }
 
@@ -924,6 +953,47 @@ app.post('/api/budgets/delete', (req, res) => {
   }
 });
 
+app.post('/api/invoices/save', (req, res) => {
+  try {
+    const { invoice } = req.body;
+    if (!invoice || !invoice.id) {
+      return res.status(400).json({ success: false, error: 'Datos de factura requeridos' });
+    }
+    state.invoices = state.invoices || [];
+    const idx = state.invoices.findIndex(i => i.id === invoice.id);
+    if (idx >= 0) {
+      state.invoices[idx] = { ...state.invoices[idx], ...invoice };
+    } else {
+      state.invoices = [invoice, ...state.invoices];
+    }
+    persistDatabaseState();
+    broadcastAll({
+      type: 'INVOICE_UPDATED',
+      payload: { invoice },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true, invoice });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/invoices/delete', (req, res) => {
+  try {
+    const { id } = req.body;
+    state.invoices = (state.invoices || []).filter(i => i.id !== id);
+    persistDatabaseState();
+    broadcastAll({
+      type: 'INVOICE_DELETED',
+      payload: { invoiceId: id },
+      connectedClients: wss.clients.size,
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/api/sync', (req, res) => {
   try {
     const incoming = req.body;
@@ -934,6 +1004,7 @@ app.post('/api/sync', (req, res) => {
         'appointments',
         'budgets',
         'workOrders',
+        'invoices',
         'notifications',
         'users',
         'mechanicNotifications',
@@ -1019,6 +1090,7 @@ app.post('/api/database/restore', (req, res) => {
       appointments: Array.isArray(payload.appointments) ? payload.appointments : state.appointments,
       budgets: Array.isArray(payload.budgets) ? payload.budgets : state.budgets,
       workOrders: Array.isArray(payload.workOrders) ? payload.workOrders : state.workOrders,
+      invoices: Array.isArray(payload.invoices) ? payload.invoices : (state.invoices || []),
       notifications: Array.isArray(payload.notifications) ? payload.notifications : state.notifications,
       users: Array.isArray(payload.users) && payload.users.length > 0 ? payload.users : state.users,
       mechanicNotifications: Array.isArray(payload.mechanicNotifications) ? payload.mechanicNotifications : state.mechanicNotifications,
@@ -1101,6 +1173,7 @@ app.post('/api/reset-clean', (req, res) => {
       appointments: [],
       budgets: [],
       workOrders: [],
+      invoices: [],
       notifications: [],
       users: [...INITIAL_USERS],
       mechanicNotifications: [],

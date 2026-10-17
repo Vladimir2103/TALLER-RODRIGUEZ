@@ -12,6 +12,7 @@ import {
   MechanicAssignmentNotification,
   WorkshopContact,
   WorkshopLegalDocument,
+  FinalConsumerInvoice,
 } from '../types';
 import {
   INITIAL_CLIENTS,
@@ -19,6 +20,7 @@ import {
   INITIAL_APPOINTMENTS,
   INITIAL_BUDGETS,
   INITIAL_WORK_ORDERS,
+  INITIAL_INVOICES,
   INITIAL_NOTIFICATIONS,
   INITIAL_USERS,
   INITIAL_MECHANIC_NOTIFICATIONS,
@@ -31,6 +33,7 @@ interface WorkshopContextType {
   appointments: Appointment[];
   budgets: Budget[];
   workOrders: WorkOrder[];
+  invoices: FinalConsumerInvoice[];
   notifications: NotificationLog[];
   mechanicNotifications: MechanicAssignmentNotification[];
   unreadNotificationsCount: number;
@@ -76,6 +79,12 @@ interface WorkshopContextType {
   updateBudget: (id: string, updates: Partial<Budget>) => void;
   deleteBudget: (id: string) => void;
   convertBudgetToWorkOrder: (budgetId: string) => WorkOrder | null;
+  // Invoices (Facturas Consumidor Final)
+  createInvoice: (invoice: Omit<FinalConsumerInvoice, 'id' | 'createdAt'>) => FinalConsumerInvoice;
+  updateInvoice: (id: string, updates: Partial<FinalConsumerInvoice>) => void;
+  deleteInvoice: (id: string) => void;
+  generateInvoiceFromWorkOrder: (workOrderId: string, customTaxPercent?: number) => FinalConsumerInvoice | null;
+  generateInvoiceFromBudget: (budgetId: string, customTaxPercent?: number) => FinalConsumerInvoice | null;
   // Work Orders & Mechanic Assignment
   createWorkOrder: (order: Omit<WorkOrder, 'id' | 'otNumber' | 'createdAt' | 'subtotal' | 'taxAmount' | 'total'> & { laborTotal?: number }) => WorkOrder;
   updateWorkOrder: (id: string, updates: Partial<WorkOrder>) => void;
@@ -149,6 +158,15 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_workOrders`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [invoices, setInvoices] = useState<FinalConsumerInvoice[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_invoices`);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -350,6 +368,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       localStorage.setItem(`${STORAGE_KEY}_appointments`, JSON.stringify(appointments));
       localStorage.setItem(`${STORAGE_KEY}_budgets`, JSON.stringify(budgets));
       localStorage.setItem(`${STORAGE_KEY}_workOrders`, JSON.stringify(workOrders));
+      localStorage.setItem(`${STORAGE_KEY}_invoices`, JSON.stringify(invoices));
       localStorage.setItem(`${STORAGE_KEY}_notifications`, JSON.stringify(notifications));
       localStorage.setItem(`${STORAGE_KEY}_mechanicNotifications`, JSON.stringify(mechanicNotifications));
       localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(users));
@@ -376,6 +395,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             appointments,
             budgets,
             workOrders,
+            invoices,
             notifications,
             mechanicNotifications,
             users,
@@ -390,7 +410,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => {
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     };
-  }, [clients, parts, appointments, budgets, workOrders, notifications, mechanicNotifications, users, workshopContact]);
+  }, [clients, parts, appointments, budgets, workOrders, invoices, notifications, mechanicNotifications, users, workshopContact]);
 
   // Periodic heartbeat sync indicator
   const triggerCloudSync = () => {
@@ -434,6 +454,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         let localParts: Part[] = [];
         let localAppointments: Appointment[] = [];
         let localBudgets: Budget[] = [];
+        let localInvoices: FinalConsumerInvoice[] = [];
         let localUsers: User[] = [];
         let localNotifs: NotificationLog[] = [];
         let localMechNotifs: MechanicAssignmentNotification[] = [];
@@ -449,6 +470,8 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (sa) localAppointments = JSON.parse(sa);
           const sb = localStorage.getItem(`${STORAGE_KEY}_budgets`);
           if (sb) localBudgets = JSON.parse(sb);
+          const si = localStorage.getItem(`${STORAGE_KEY}_invoices`);
+          if (si) localInvoices = JSON.parse(si);
           const su = localStorage.getItem(`${STORAGE_KEY}_users`);
           if (su) localUsers = JSON.parse(su);
           const sn = localStorage.getItem(`${STORAGE_KEY}_notifications`);
@@ -463,6 +486,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const activeParts = Array.isArray(p.parts) && p.parts.length > 0 ? p.parts : (localParts.length > 0 ? localParts : (Array.isArray(p.parts) ? p.parts : []));
         const activeAppointments = Array.isArray(p.appointments) && p.appointments.length > 0 ? p.appointments : (localAppointments.length > 0 ? localAppointments : (Array.isArray(p.appointments) ? p.appointments : []));
         const activeBudgets = Array.isArray(p.budgets) && p.budgets.length > 0 ? p.budgets : (localBudgets.length > 0 ? localBudgets : (Array.isArray(p.budgets) ? p.budgets : []));
+        const activeInvoices = Array.isArray(p.invoices) && p.invoices.length > 0 ? p.invoices : (localInvoices.length > 0 ? localInvoices : (Array.isArray(p.invoices) ? p.invoices : []));
         const activeNotifs = Array.isArray(p.notifications) && p.notifications.length > 0 ? p.notifications : (localNotifs.length > 0 ? localNotifs : (Array.isArray(p.notifications) ? p.notifications : []));
         const activeMechNotifs = Array.isArray(p.mechanicNotifications) && p.mechanicNotifications.length > 0 ? p.mechanicNotifications : (localMechNotifs.length > 0 ? localMechNotifs : (Array.isArray(p.mechanicNotifications) ? p.mechanicNotifications : []));
 
@@ -482,6 +506,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setParts(activeParts);
         setAppointments(activeAppointments);
         setBudgets(activeBudgets);
+        setInvoices(activeInvoices);
         setUsers(activeUsers);
         setNotifications(activeNotifs);
         setMechanicNotifications(activeMechNotifs);
@@ -497,6 +522,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           (activeParts.length > 0 && (!p.parts || p.parts.length === 0)) ||
           (activeAppointments.length > 0 && (!p.appointments || p.appointments.length === 0)) ||
           (activeBudgets.length > 0 && (!p.budgets || p.budgets.length === 0)) ||
+          (activeInvoices.length > 0 && (!p.invoices || p.invoices.length === 0)) ||
           (activeUsers !== p.users && isUsersModifiedLocally)
         );
 
@@ -510,6 +536,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               appointments: activeAppointments,
               budgets: activeBudgets,
               workOrders: activeWorkOrders,
+              invoices: activeInvoices,
               notifications: activeNotifs,
               mechanicNotifications: activeMechNotifs,
               users: activeUsers,
@@ -524,6 +551,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const p = data.payload;
         if (!p) break;
         if (Array.isArray(p.workOrders)) setWorkOrders(p.workOrders);
+        if (Array.isArray(p.invoices)) setInvoices(p.invoices);
         if (Array.isArray(p.users) && p.users.length > 0) setUsers(p.users);
         if (Array.isArray(p.mechanicNotifications)) setMechanicNotifications(p.mechanicNotifications);
         if (Array.isArray(p.clients)) setClients(p.clients);
@@ -647,6 +675,29 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const { budgetId } = data.payload;
         if (budgetId) {
           setBudgets(prev => prev.filter(b => b.id !== budgetId));
+        }
+        break;
+      }
+
+      // INVOICES (FACTURAS CONSUMIDOR FINAL)
+      case 'INVOICE_CREATED': {
+        const { invoice } = data.payload;
+        if (invoice) {
+          setInvoices(prev => [invoice, ...prev.filter(i => i.id !== invoice.id)]);
+        }
+        break;
+      }
+      case 'INVOICE_UPDATED': {
+        const { invoice } = data.payload;
+        if (invoice) {
+          setInvoices(prev => prev.map(i => (i.id === invoice.id ? invoice : i)));
+        }
+        break;
+      }
+      case 'INVOICE_DELETED': {
+        const { invoiceId } = data.payload;
+        if (invoiceId) {
+          setInvoices(prev => prev.filter(i => i.id !== invoiceId));
         }
         break;
       }
@@ -858,6 +909,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           let localParts: Part[] = [];
           let localAppointments: Appointment[] = [];
           let localBudgets: Budget[] = [];
+          let localInvoices: FinalConsumerInvoice[] = [];
           let localUsers: User[] = [];
           let localNotifs: NotificationLog[] = [];
           let localMechNotifs: MechanicAssignmentNotification[] = [];
@@ -873,6 +925,8 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             if (sa) localAppointments = JSON.parse(sa);
             const sb = localStorage.getItem(`${STORAGE_KEY}_budgets`);
             if (sb) localBudgets = JSON.parse(sb);
+            const si = localStorage.getItem(`${STORAGE_KEY}_invoices`);
+            if (si) localInvoices = JSON.parse(si);
             const su = localStorage.getItem(`${STORAGE_KEY}_users`);
             if (su) localUsers = JSON.parse(su);
             const sn = localStorage.getItem(`${STORAGE_KEY}_notifications`);
@@ -887,6 +941,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const activeParts = Array.isArray(p.parts) && p.parts.length > 0 ? p.parts : (localParts.length > 0 ? localParts : (Array.isArray(p.parts) ? p.parts : []));
           const activeAppointments = Array.isArray(p.appointments) && p.appointments.length > 0 ? p.appointments : (localAppointments.length > 0 ? localAppointments : (Array.isArray(p.appointments) ? p.appointments : []));
           const activeBudgets = Array.isArray(p.budgets) && p.budgets.length > 0 ? p.budgets : (localBudgets.length > 0 ? localBudgets : (Array.isArray(p.budgets) ? p.budgets : []));
+          const activeInvoices = Array.isArray(p.invoices) && p.invoices.length > 0 ? p.invoices : (localInvoices.length > 0 ? localInvoices : (Array.isArray(p.invoices) ? p.invoices : []));
           const activeNotifs = Array.isArray(p.notifications) && p.notifications.length > 0 ? p.notifications : (localNotifs.length > 0 ? localNotifs : (Array.isArray(p.notifications) ? p.notifications : []));
           const activeMechNotifs = Array.isArray(p.mechanicNotifications) && p.mechanicNotifications.length > 0 ? p.mechanicNotifications : (localMechNotifs.length > 0 ? localMechNotifs : (Array.isArray(p.mechanicNotifications) ? p.mechanicNotifications : []));
 
@@ -904,6 +959,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setParts(activeParts);
           setAppointments(activeAppointments);
           setBudgets(activeBudgets);
+          setInvoices(activeInvoices);
           setWorkOrders(activeWorkOrders);
           setUsers(activeUsers);
           setNotifications(activeNotifs);
@@ -917,6 +973,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             localStorage.setItem(`${STORAGE_KEY}_parts`, JSON.stringify(activeParts));
             localStorage.setItem(`${STORAGE_KEY}_appointments`, JSON.stringify(activeAppointments));
             localStorage.setItem(`${STORAGE_KEY}_budgets`, JSON.stringify(activeBudgets));
+            localStorage.setItem(`${STORAGE_KEY}_invoices`, JSON.stringify(activeInvoices));
             localStorage.setItem(`${STORAGE_KEY}_workOrders`, JSON.stringify(activeWorkOrders));
             localStorage.setItem(`${STORAGE_KEY}_notifications`, JSON.stringify(activeNotifs));
             localStorage.setItem(`${STORAGE_KEY}_mechanicNotifications`, JSON.stringify(activeMechNotifs));
@@ -1366,6 +1423,258 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     triggerCloudSync();
     return newOrder;
+  };
+
+  // Final Consumer Invoices Management (Facturas Consumidor Final)
+  const createInvoice = (
+    data: Omit<FinalConsumerInvoice, 'id' | 'createdAt'>
+  ): FinalConsumerInvoice => {
+    if (!hasPermission('canManageInvoices') && !hasPermission('canManageBudgets')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para emitir facturas.');
+      throw new Error('Unauthorized: canManageInvoices required');
+    }
+
+    const subtotal = Number((data.laborAmount + data.partsTotalAmount).toFixed(2));
+    const taxPercent = typeof data.taxPercent === 'number' ? data.taxPercent : 13;
+    const discountAmount = data.discountAmount || 0;
+    const taxableBase = Math.max(0, subtotal - discountAmount);
+    const taxAmount = Number(((taxableBase * taxPercent) / 100).toFixed(2));
+    const total = Number((taxableBase + taxAmount).toFixed(2));
+
+    const invoiceCount = invoices.length + 1;
+    const invoiceNumber = data.invoiceNumber || `FCF-${String(invoiceCount).padStart(4, '0')}`;
+
+    const newInvoice: FinalConsumerInvoice = {
+      ...data,
+      id: `fcf-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      invoiceNumber,
+      subtotal,
+      taxPercent,
+      taxAmount,
+      total,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+
+    setInvoices(prev => [newInvoice, ...prev]);
+    fetch('/api/invoices/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoice: newInvoice }),
+    }).catch(e => console.warn(e));
+    sendRealtimeEvent('INVOICE_CREATE', { invoice: newInvoice });
+    triggerCloudSync();
+    return newInvoice;
+  };
+
+  const updateInvoice = (id: string, updates: Partial<FinalConsumerInvoice>) => {
+    if (!hasPermission('canManageInvoices') && !hasPermission('canManageBudgets')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para modificar facturas.');
+      return;
+    }
+    let updatedInvoice: FinalConsumerInvoice | null = null;
+    setInvoices(prev =>
+      prev.map(inv => {
+        if (inv.id !== id) return inv;
+        const merged = { ...inv, ...updates };
+        const subtotal = Number((merged.laborAmount + merged.partsTotalAmount).toFixed(2));
+        const taxPercent = typeof merged.taxPercent === 'number' ? merged.taxPercent : 13;
+        const discountAmount = merged.discountAmount || 0;
+        const taxableBase = Math.max(0, subtotal - discountAmount);
+        const taxAmount = Number(((taxableBase * taxPercent) / 100).toFixed(2));
+        const total = Number((taxableBase + taxAmount).toFixed(2));
+        updatedInvoice = { ...merged, subtotal, taxPercent, taxAmount, total };
+        return updatedInvoice;
+      })
+    );
+    if (updatedInvoice) {
+      fetch('/api/invoices/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoice: updatedInvoice }),
+      }).catch(e => console.warn(e));
+      sendRealtimeEvent('INVOICE_UPDATE', { invoice: updatedInvoice });
+    }
+    triggerCloudSync();
+  };
+
+  const deleteInvoice = (id: string) => {
+    if (!hasPermission('canDeleteRecords')) {
+      alert('🔒 Acción Bloqueada: Tu cuenta no tiene permisos para eliminar registros (canDeleteRecords).');
+      return;
+    }
+    setInvoices(prev => prev.filter(inv => inv.id !== id));
+    fetch('/api/invoices/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).catch(e => console.warn(e));
+    sendRealtimeEvent('INVOICE_DELETE', { invoiceId: id });
+    triggerCloudSync();
+  };
+
+  const generateInvoiceFromWorkOrder = (
+    workOrderId: string,
+    customTaxPercent?: number
+  ): FinalConsumerInvoice | null => {
+    const order = workOrders.find(o => o.id === workOrderId);
+    if (!order) return null;
+
+    const matchedClient = clients.find(c => c.id === order.clientId || c.name.toLowerCase() === order.clientName.toLowerCase());
+
+    const laborAmount = Number((order.laborTotal || 0).toFixed(2));
+    const partsTotalAmount = Number(
+      (order.partsUsed || []).reduce((sum, p) => sum + (p.total || p.quantity * p.unitPrice), 0).toFixed(2)
+    );
+
+    const subtotal = Number((laborAmount + partsTotalAmount).toFixed(2));
+    const taxPercent = customTaxPercent !== undefined ? customTaxPercent : 13;
+    const taxAmount = Number(((subtotal * taxPercent) / 100).toFixed(2));
+    const total = Number((subtotal + taxAmount).toFixed(2));
+
+    const invoiceCount = invoices.length + 1;
+    const invoiceNumber = `FCF-${String(invoiceCount).padStart(4, '0')}`;
+
+    const newInvoice: FinalConsumerInvoice = {
+      id: `fcf-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      invoiceNumber,
+      date: new Date().toISOString().split('T')[0],
+      dueDate: new Date().toISOString().split('T')[0],
+      status: order.paymentStatus === 'pagado' ? 'pagada' : 'emitida',
+      paymentMethod: 'Efectivo',
+
+      // Datos oficiales del taller
+      workshopName: workshopContact.name || WORKSHOP_CONFIG.name,
+      workshopLegalName: workshopContact.legalName || WORKSHOP_CONFIG.legalName,
+      workshopTaxId: workshopContact.taxId || WORKSHOP_CONFIG.taxId,
+      workshopNRC: workshopContact.taxNRC || WORKSHOP_CONFIG.taxNRC,
+      workshopActivity: workshopContact.businessActivity || WORKSHOP_CONFIG.businessActivity,
+      workshopAddress: workshopContact.address || WORKSHOP_CONFIG.address,
+      workshopPhone: workshopContact.phone || WORKSHOP_CONFIG.phone,
+      workshopEmail: workshopContact.email || WORKSHOP_CONFIG.email,
+
+      // Datos del cliente y vehículo
+      clientId: order.clientId,
+      clientName: order.clientName,
+      clientIdentification: matchedClient?.identification || '',
+      clientPhone: order.clientPhone,
+      clientEmail: order.clientEmail || matchedClient?.email || '',
+      clientAddress: matchedClient?.address || '',
+      vehiclePlate: order.vehiclePlate,
+      vehicleModel: `${order.vehicleBrand} ${order.vehicleModel}`.trim(),
+      vehicleYear: order.vehicleYear,
+
+      // Referencia a OT
+      workOrderId: order.id,
+      otNumber: order.otNumber,
+
+      // LOS EXACTAMENTE 2 DETALLES REQUERIDOS
+      laborDescription: `Mano de obra especializada por servicios de mecánica general y diagnóstico (${order.reportedFault || 'Reparación automotriz'})`,
+      laborAmount,
+
+      partsDescription: `Total de repuestos, lubricantes e insumos originales instalados (${(order.partsUsed || []).length} ítem/s)`,
+      partsTotalAmount,
+
+      // Totales
+      subtotal,
+      taxPercent,
+      taxAmount,
+      discountAmount: 0,
+      total,
+
+      notes: `Factura generada en base a la Orden de Trabajo N° ${order.otNumber}.`,
+      warrantyNotes: workshopContact.warrantyTerms || WORKSHOP_CONFIG.warrantyTerms,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+
+    setInvoices(prev => [newInvoice, ...prev]);
+    fetch('/api/invoices/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoice: newInvoice }),
+    }).catch(e => console.warn(e));
+    sendRealtimeEvent('INVOICE_CREATE', { invoice: newInvoice });
+    triggerCloudSync();
+    return newInvoice;
+  };
+
+  const generateInvoiceFromBudget = (
+    budgetId: string,
+    customTaxPercent?: number
+  ): FinalConsumerInvoice | null => {
+    const budget = budgets.find(b => b.id === budgetId);
+    if (!budget) return null;
+
+    const matchedClient = clients.find(c => c.id === budget.clientId || c.name.toLowerCase() === budget.clientName.toLowerCase());
+
+    const laborItems = budget.items.filter(i => i.type === 'mano_de_obra');
+    const partsItems = budget.items.filter(i => i.type === 'repuesto');
+
+    const laborAmount = Number(laborItems.reduce((sum, i) => sum + i.total, 0).toFixed(2));
+    const partsTotalAmount = Number(partsItems.reduce((sum, i) => sum + i.total, 0).toFixed(2));
+
+    const subtotal = Number((laborAmount + partsTotalAmount).toFixed(2));
+    const taxPercent = customTaxPercent !== undefined ? customTaxPercent : (budget.taxPercent || 13);
+    const taxAmount = Number(((subtotal * taxPercent) / 100).toFixed(2));
+    const total = Number((subtotal + taxAmount - (budget.discountAmount || 0)).toFixed(2));
+
+    const invoiceCount = invoices.length + 1;
+    const invoiceNumber = `FCF-${String(invoiceCount).padStart(4, '0')}`;
+
+    const newInvoice: FinalConsumerInvoice = {
+      id: `fcf-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      invoiceNumber,
+      date: new Date().toISOString().split('T')[0],
+      dueDate: new Date().toISOString().split('T')[0],
+      status: 'emitida',
+      paymentMethod: 'Efectivo',
+
+      workshopName: workshopContact.name || WORKSHOP_CONFIG.name,
+      workshopLegalName: workshopContact.legalName || WORKSHOP_CONFIG.legalName,
+      workshopTaxId: workshopContact.taxId || WORKSHOP_CONFIG.taxId,
+      workshopNRC: workshopContact.taxNRC || WORKSHOP_CONFIG.taxNRC,
+      workshopActivity: workshopContact.businessActivity || WORKSHOP_CONFIG.businessActivity,
+      workshopAddress: workshopContact.address || WORKSHOP_CONFIG.address,
+      workshopPhone: workshopContact.phone || WORKSHOP_CONFIG.phone,
+      workshopEmail: workshopContact.email || WORKSHOP_CONFIG.email,
+
+      clientId: budget.clientId,
+      clientName: budget.clientName,
+      clientIdentification: matchedClient?.identification || '',
+      clientPhone: budget.clientPhone,
+      clientEmail: matchedClient?.email || '',
+      clientAddress: matchedClient?.address || '',
+      vehiclePlate: budget.vehiclePlate,
+      vehicleModel: budget.vehicleModel,
+
+      budgetId: budget.id,
+      quoteNumber: budget.quoteNumber,
+
+      laborDescription: `Mano de obra y servicios según Presupuesto ${budget.quoteNumber}`,
+      laborAmount,
+
+      partsDescription: `Total de repuestos, lubricantes y materiales presupuestados (${partsItems.length} ítem/s)`,
+      partsTotalAmount,
+
+      subtotal,
+      taxPercent,
+      taxAmount,
+      discountAmount: budget.discountAmount || 0,
+      total,
+
+      notes: `Factura generada en base a la Cotización N° ${budget.quoteNumber}.`,
+      warrantyNotes: workshopContact.warrantyTerms || WORKSHOP_CONFIG.warrantyTerms,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+
+    setInvoices(prev => [newInvoice, ...prev]);
+    fetch('/api/invoices/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoice: newInvoice }),
+    }).catch(e => console.warn(e));
+    sendRealtimeEvent('INVOICE_CREATE', { invoice: newInvoice });
+    triggerCloudSync();
+    return newInvoice;
   };
 
   // Work Orders Management
@@ -1991,6 +2300,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         appointments,
         budgets,
         workOrders,
+        invoices,
         notifications,
         mechanicNotifications,
         unreadNotificationsCount,
@@ -2018,6 +2328,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateBudget,
         deleteBudget,
         convertBudgetToWorkOrder,
+        createInvoice,
+        updateInvoice,
+        deleteInvoice,
+        generateInvoiceFromWorkOrder,
+        generateInvoiceFromBudget,
         createWorkOrder,
         updateWorkOrder,
         updateWorkOrderStage,

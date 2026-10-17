@@ -15,6 +15,7 @@ import {
   Lock,
   Crown,
   Info,
+  Receipt,
 } from 'lucide-react';
 import { MechanicPermissions } from '../types';
 
@@ -82,6 +83,13 @@ export const MyPermissionsModal: React.FC<MyPermissionsModalProps> = ({
       label: 'Informes Financieros',
       desc: 'Visualizar ingresos brutos, márgenes de utilidad y balances en dólares',
       icon: DollarSign,
+      category: 'Finanzas & Métricas',
+    },
+    {
+      key: 'canManageInvoices',
+      label: 'Facturas Consumidor Final',
+      desc: 'Emitir y gestionar facturas oficiales de consumidor final con IVA editable y datos del taller',
+      icon: Receipt,
       category: 'Finanzas & Métricas',
     },
     {

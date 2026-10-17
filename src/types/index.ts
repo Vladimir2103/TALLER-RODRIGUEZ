@@ -184,6 +184,7 @@ export interface MechanicPermissions {
   canManageMechanics: boolean;      // Crear mecánicos y asignar/modificar permisos (solo jefe o autorizado)
   canSendWhatsApp: boolean;         // Enviar mensajes oficiales por WhatsApp al cliente
   canDeleteRecords: boolean;        // Eliminar órdenes, citas, presupuestos, clientes
+  canManageInvoices?: boolean;      // Crear y gestionar facturas de consumidor final
 }
 
 export interface User {
@@ -250,5 +251,68 @@ export interface WorkshopContact {
   warrantyTerms?: string; // Términos de garantía
   legalDocuments?: WorkshopLegalDocument[];
 }
+
+export type InvoiceStatus = 'emitida' | 'pagada' | 'anulada';
+export type InvoicePaymentMethod =
+  | 'Efectivo'
+  | 'Tarjeta de Débito / Crédito'
+  | 'Transferencia Bancaria'
+  | 'Cheque'
+  | 'Caja Taller / Otro';
+
+export interface FinalConsumerInvoice {
+  id: string;
+  invoiceNumber: string; // e.g. FCF-0001
+  date: string; // YYYY-MM-DD
+  dueDate?: string; // YYYY-MM-DD
+  status: InvoiceStatus;
+  paymentMethod: InvoicePaymentMethod;
+
+  // Encabezado y Datos del Taller
+  workshopName: string;
+  workshopLegalName: string;
+  workshopTaxId: string; // NIT
+  workshopNRC: string; // NRC
+  workshopActivity?: string; // Giro
+  workshopAddress: string;
+  workshopPhone: string;
+  workshopEmail: string;
+
+  // Datos del Cliente
+  clientId?: string;
+  clientName: string;
+  clientIdentification?: string; // DUI / NIT
+  clientPhone: string;
+  clientEmail?: string;
+  clientAddress?: string;
+  vehiclePlate?: string;
+  vehicleModel?: string;
+  vehicleYear?: number;
+
+  // Referencia opcional a OT o Presupuesto
+  workOrderId?: string;
+  otNumber?: string;
+  budgetId?: string;
+  quoteNumber?: string;
+
+  // EXACTAMENTE 2 DETALLES EN LA FACTURA (Mano de Obra y Total de Repuestos)
+  laborDescription: string;
+  laborAmount: number;
+
+  partsDescription: string;
+  partsTotalAmount: number;
+
+  // Subtotal, IVA editable y Total
+  subtotal: number;
+  taxPercent: number; // Editable IVA %
+  taxAmount: number;
+  discountAmount?: number;
+  total: number;
+
+  notes?: string;
+  warrantyNotes?: string;
+  createdAt: string;
+}
+
 
 

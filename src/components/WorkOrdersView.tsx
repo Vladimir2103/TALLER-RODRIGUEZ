@@ -24,6 +24,7 @@ import {
   PlusCircle,
   ShieldCheck,
   Share2,
+  Receipt,
 } from 'lucide-react';
 import { WORKSHOP_CONFIG } from '../data/initialData';
 import { Logo } from './Logo';
@@ -34,6 +35,7 @@ import confetti from 'canvas-confetti';
 
 interface WorkOrdersViewProps {
   onOpenWhatsApp: (phone: string, clientName: string, template: any, data: any) => void;
+  onNavigateToInvoices?: () => void;
   isCreateModalOpen?: boolean;
   onCloseCreateModal?: () => void;
   prefilledAppointment?: any;
@@ -51,6 +53,7 @@ const STAGES: { id: WorkOrderStage; label: string; color: string }[] = [
 
 export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
   onOpenWhatsApp,
+  onNavigateToInvoices,
   isCreateModalOpen = false,
   onCloseCreateModal,
   prefilledAppointment,
@@ -61,6 +64,7 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
     updateWorkOrder,
     updateWorkOrderStage,
     deleteWorkOrder,
+    generateInvoiceFromWorkOrder,
     clients,
     parts,
     activeTechnicians,
@@ -1011,6 +1015,23 @@ export const WorkOrdersView: React.FC<WorkOrdersViewProps> = ({
                 >
                   <Share2 className="w-3.5 h-3.5" />
                   <span>Link Seguimiento</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const inv = generateInvoiceFromWorkOrder(selectedOrderForPrint.id, 13);
+                    if (inv) {
+                      alert(`✅ Factura ${inv.invoiceNumber} generada con éxito con los datos del taller y los 2 renglones de mano de obra y repuestos.`);
+                      if (onNavigateToInvoices) {
+                        setSelectedOrderForPrint(null);
+                        onNavigateToInvoices();
+                      }
+                    }
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold text-neutral-200 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title="Generar Factura de Consumidor Final para esta orden"
+                >
+                  <Receipt className="w-3.5 h-3.5 text-red-500" />
+                  <span>Emitir Factura</span>
                 </button>
                 <button
                   onClick={() => window.print()}

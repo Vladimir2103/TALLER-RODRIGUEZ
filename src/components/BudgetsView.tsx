@@ -19,6 +19,7 @@ import {
   Calendar,
   DollarSign,
   AlertCircle,
+  Receipt,
 } from 'lucide-react';
 import { WORKSHOP_CONFIG } from '../data/initialData';
 import { Logo } from './Logo';
@@ -28,6 +29,7 @@ import confetti from 'canvas-confetti';
 interface BudgetsViewProps {
   onOpenWhatsApp: (phone: string, clientName: string, template: any, data: any) => void;
   onNavigateToOT: () => void;
+  onNavigateToInvoices?: () => void;
   isCreateModalOpen?: boolean;
   onCloseCreateModal?: () => void;
 }
@@ -35,6 +37,7 @@ interface BudgetsViewProps {
 export const BudgetsView: React.FC<BudgetsViewProps> = ({
   onOpenWhatsApp,
   onNavigateToOT,
+  onNavigateToInvoices,
   isCreateModalOpen = false,
   onCloseCreateModal,
 }) => {
@@ -44,6 +47,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
     updateBudget,
     deleteBudget,
     convertBudgetToWorkOrder,
+    generateInvoiceFromBudget,
     clients,
     parts,
     hasPermission,
@@ -760,6 +764,23 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const inv = generateInvoiceFromBudget(selectedBudgetForPrint.id, 13);
+                    if (inv) {
+                      alert(`✅ Factura ${inv.invoiceNumber} generada exitosamente con los datos del taller y los 2 renglones de mano de obra y repuestos.`);
+                      if (onNavigateToInvoices) {
+                        setSelectedBudgetForPrint(null);
+                        onNavigateToInvoices();
+                      }
+                    }
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold text-neutral-200 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title="Generar Factura de Consumidor Final para este presupuesto"
+                >
+                  <Receipt className="w-3.5 h-3.5 text-red-500" />
+                  <span>Emitir Factura</span>
+                </button>
                 <button
                   onClick={() => window.print()}
                   className="px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-red-950"

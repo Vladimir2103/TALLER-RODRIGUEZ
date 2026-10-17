@@ -35,6 +35,7 @@ import {
   Save,
   Briefcase,
   Scale,
+  Receipt,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -90,6 +91,7 @@ export const MechanicsManagementView: React.FC<MechanicsManagementViewProps> = (
     canManageMechanics: false,
     canSendWhatsApp: false,
     canDeleteRecords: false,
+    canManageInvoices: false,
   });
 
   // Edit form states
@@ -437,6 +439,13 @@ export const MechanicsManagementView: React.FC<MechanicsManagementViewProps> = (
       label: 'Métricas Financieras & Utilidad',
       icon: DollarSign,
       desc: 'Ver ingresos brutos facturados, margen neto y balance en el panel.',
+      category: 'Finanzas',
+    },
+    {
+      key: 'canManageInvoices',
+      label: 'Facturas Consumidor Final',
+      icon: Receipt,
+      desc: 'Generar y emitir facturas oficiales de consumidor final con IVA editable y encabezado del taller.',
       category: 'Finanzas',
     },
     {
